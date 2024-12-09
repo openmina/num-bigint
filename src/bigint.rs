@@ -3,6 +3,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use tinyvec::TinyVec;
 use core::cmp::Ordering::{self, Equal};
 use core::default::Default;
 use core::fmt;
@@ -16,7 +17,7 @@ use num_traits::{ConstZero, Num, One, Pow, Signed, Zero};
 use self::Sign::{Minus, NoSign, Plus};
 
 use crate::big_digit::BigDigit;
-use crate::biguint::to_str_radix_reversed;
+use crate::biguint::{to_str_radix_reversed, NDIGITS};
 use crate::biguint::{BigUint, IntDigits, U32Digits, U64Digits};
 
 mod addition;
@@ -127,7 +128,7 @@ impl Ord for BigInt {
 impl Default for BigInt {
     #[inline]
     fn default() -> BigInt {
-        Self::ZERO
+        Self::zero()
     }
 }
 
@@ -206,7 +207,7 @@ impl Not for &BigInt {
 impl Zero for BigInt {
     #[inline]
     fn zero() -> BigInt {
-        Self::ZERO
+        Self::zero()
     }
 
     #[inline]
@@ -221,10 +222,10 @@ impl Zero for BigInt {
     }
 }
 
-impl ConstZero for BigInt {
-    // forward to the inherent const
-    const ZERO: Self = Self::ZERO;
-}
+// impl ConstZero for BigInt {
+//     // forward to the inherent const
+//     const ZERO: Self = Self::zero();
+// }
 
 impl One for BigInt {
     #[inline]
@@ -259,7 +260,7 @@ impl Signed for BigInt {
     #[inline]
     fn abs_sub(&self, other: &BigInt) -> BigInt {
         if *self <= *other {
-            Self::ZERO
+            Self::zero()
         } else {
             self - other
         }
@@ -270,7 +271,7 @@ impl Signed for BigInt {
         match self.sign {
             Plus => BigInt::one(),
             Minus => -BigInt::one(),
-            NoSign => Self::ZERO,
+            NoSign => Self::zero(),
         }
     }
 
@@ -450,7 +451,7 @@ impl Integer for BigInt {
     fn extended_gcd_lcm(&self, other: &BigInt) -> (num_integer::ExtendedGcd<BigInt>, BigInt) {
         let egcd = self.extended_gcd(other);
         let lcm = if egcd.gcd.is_zero() {
-            Self::ZERO
+            Self::zero()
         } else {
             BigInt::from(&self.data / &egcd.gcd.data * &other.data)
         };
@@ -534,7 +535,7 @@ impl IntDigits for BigInt {
         self.data.digits()
     }
     #[inline]
-    fn digits_mut(&mut self) -> &mut Vec<BigDigit> {
+    fn digits_mut(&mut self) -> &mut TinyVec<[BigDigit; NDIGITS]> {
         self.data.digits_mut()
     }
     #[inline]
@@ -563,11 +564,18 @@ pub trait ToBigInt {
 }
 
 impl BigInt {
-    /// A constant `BigInt` with value 0, useful for static initialization.
-    pub const ZERO: Self = BigInt {
-        sign: NoSign,
-        data: BigUint::ZERO,
-    };
+    // A constant `BigInt` with value 0, useful for static initialization.
+    // pub const ZERO: Self = BigInt {
+    //     sign: NoSign,
+    //     data: BigUint::zero(),
+    // };
+
+    pub fn zero() -> Self {
+        Self {
+            sign: NoSign,
+            data: BigUint::zero(),
+        }
+    }
 
     /// Creates and initializes a [`BigInt`].
     ///
@@ -980,7 +988,7 @@ impl BigInt {
     pub fn to_biguint(&self) -> Option<BigUint> {
         match self.sign {
             Plus => Some(self.data.clone()),
-            NoSign => Some(BigUint::ZERO),
+            NoSign => Some(BigUint::zero()),
             Minus => None,
         }
     }

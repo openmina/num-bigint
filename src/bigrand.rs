@@ -9,7 +9,7 @@ use crate::BigInt;
 use crate::BigUint;
 use crate::Sign::*;
 
-use crate::biguint::biguint_from_vec;
+use crate::biguint::biguint_from_tinyvec;
 
 use num_integer::Integer;
 use num_traits::{ToPrimitive, Zero};
@@ -69,7 +69,8 @@ impl<R: Rng + ?Sized> RandBigInt for R {
                 .expect("capacity overflow");
             let native_digits = Integer::div_ceil(&bit_size, &64);
             let native_len = native_digits.to_usize().expect("capacity overflow");
-            let mut data = vec![0u64; native_len];
+            let mut data = tinyvec::TinyVec::new();
+            // let mut data = vec![0u64; native_len];
             unsafe {
                 // Generate bits in a `&mut [u32]` slice for value stability
                 let ptr = data.as_mut_ptr() as *mut u32;
@@ -82,7 +83,7 @@ impl<R: Rng + ?Sized> RandBigInt for R {
                 // swap u32 digits into u64 endianness
                 *digit = (*digit << 32) | (*digit >> 32);
             }
-            biguint_from_vec(data)
+            biguint_from_tinyvec(data)
         }
     );
 

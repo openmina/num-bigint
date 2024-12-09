@@ -1,6 +1,6 @@
 use super::addition::{__add2, add2};
 use super::subtraction::sub2;
-use super::{biguint_from_vec, cmp_slice, BigUint, IntDigits};
+use super::{biguint_from_tinyvec, cmp_slice, BigUint, IntDigits};
 
 use crate::big_digit::{self, BigDigit, DoubleBigDigit};
 use crate::Sign::{self, Minus, NoSign, Plus};
@@ -10,6 +10,7 @@ use core::cmp::Ordering;
 use core::iter::Product;
 use core::ops::{Mul, MulAssign};
 use num_traits::{CheckedMul, FromPrimitive, One, Zero};
+use tinyvec::{tiny_vec, TinyVec};
 
 #[inline]
 pub(super) fn mac_with_carry(
@@ -58,7 +59,7 @@ fn mac_digit(acc: &mut [BigDigit], b: &[BigDigit], c: BigDigit) {
 }
 
 fn bigint_from_slice(slice: &[BigDigit]) -> BigInt {
-    BigInt::from(biguint_from_vec(slice.to_vec()))
+    BigInt::from(biguint_from_tinyvec(slice.iter().copied().collect()))
 }
 
 /// Three argument multiply accumulate:
@@ -233,7 +234,7 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
         // We reuse the same BigUint for all the intermediate multiplies and have to size p
         // appropriately here: x1.len() >= x0.len and y1.len() >= y0.len():
         let len = x1.len() + y1.len() + 1;
-        let mut p = BigUint { data: vec![0; len] };
+        let mut p = BigUint { data: core::iter::repeat(0).take(len).collect() };
 
         // p2 = x1 * y1
         mac3(&mut p.data, x1, y1);
@@ -409,7 +410,7 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
 
 fn mul3(x: &[BigDigit], y: &[BigDigit]) -> BigUint {
     let len = x.len() + y.len() + 1;
-    let mut prod = BigUint { data: vec![0; len] };
+    let mut prod = BigUint { data: core::iter::repeat(0).take(len).collect() };
 
     mac3(&mut prod.data, x, y);
     prod.normalized()
@@ -446,16 +447,16 @@ fn sub_sign(mut a: &[BigDigit], mut b: &[BigDigit]) -> (Sign, BigUint) {
 
     match cmp_slice(a, b) {
         Ordering::Greater => {
-            let mut a = a.to_vec();
+            let mut a: TinyVec<_> = a.iter().copied().collect();
             sub2(&mut a, b);
-            (Plus, biguint_from_vec(a))
+            (Plus, biguint_from_tinyvec(a))
         }
         Ordering::Less => {
-            let mut b = b.to_vec();
+            let mut b: TinyVec<_> = b.iter().copied().collect();
             sub2(&mut b, a);
-            (Minus, biguint_from_vec(b))
+            (Minus, biguint_from_tinyvec(b))
         }
-        Ordering::Equal => (NoSign, BigUint::ZERO),
+        Ordering::Equal => (NoSign, BigUint::zero()),
     }
 }
 
@@ -468,7 +469,7 @@ macro_rules! impl_mul {
             fn mul(self, other: $Other) -> BigUint {
                 match (&*self.data, &*other.data) {
                     // multiply by zero
-                    (&[], _) | (_, &[]) => BigUint::ZERO,
+                    (&[], _) | (_, &[]) => BigUint::zero(),
                     // multiply by a scalar
                     (_, &[digit]) => self * digit,
                     (&[digit], _) => other * digit,

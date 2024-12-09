@@ -1,7 +1,7 @@
 #![cfg(feature = "serde")]
 #![cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 
-use super::{biguint_from_vec, BigUint};
+use super::{biguint_from_tinyvec, BigUint};
 
 use alloc::vec::Vec;
 use core::{cmp, fmt, mem};
@@ -84,13 +84,13 @@ impl<'de> Visitor<'de> for U32Visitor {
             S: SeqAccess<'de>,
         {
             let len = cautious(seq.size_hint());
-            let mut data = Vec::with_capacity(len);
+            let mut data = tinyvec::TinyVec::new();
 
             while let Some(value) = seq.next_element::<u32>()? {
                 data.push(value);
             }
 
-            Ok(biguint_from_vec(data))
+            Ok(biguint_from_tinyvec(data))
         }
 
         fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
@@ -102,7 +102,7 @@ impl<'de> Visitor<'de> for U32Visitor {
 
             let u32_len = cautious(seq.size_hint());
             let len = Integer::div_ceil(&u32_len, &2);
-            let mut data = Vec::with_capacity(len);
+            let mut data = tinyvec::TinyVec::new();
 
             while let Some(lo) = seq.next_element::<u32>()? {
                 let mut value = BigDigit::from(lo);
@@ -115,7 +115,7 @@ impl<'de> Visitor<'de> for U32Visitor {
                 }
             }
 
-            Ok(biguint_from_vec(data))
+            Ok(biguint_from_tinyvec(data))
         }
     );
 }

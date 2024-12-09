@@ -23,7 +23,7 @@ macro_rules! bigint_sub {
             (Plus, Plus) | (Minus, Minus) => match $a.data.cmp(&$b.data) {
                 Less => BigInt::from_biguint(-$a.sign, $b_data - $a_data),
                 Greater => BigInt::from_biguint($a.sign, $a_data - $b_data),
-                Equal => BigInt::ZERO,
+                Equal => BigInt::zero(),
             },
         }
     };
@@ -75,7 +75,7 @@ impl Sub<BigInt> for BigInt {
 impl SubAssign<&BigInt> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: &BigInt) {
-        let n = mem::replace(self, Self::ZERO);
+        let n = mem::replace(self, Self::zero());
         *self = n - other;
     }
 }
@@ -96,7 +96,7 @@ impl Sub<u32> for BigInt {
             NoSign => -BigInt::from(other),
             Minus => -BigInt::from(self.data + other),
             Plus => match self.data.cmp(&From::from(other)) {
-                Equal => Self::ZERO,
+                Equal => Self::zero(),
                 Greater => BigInt::from(self.data - other),
                 Less => -BigInt::from(other - self.data),
             },
@@ -106,7 +106,7 @@ impl Sub<u32> for BigInt {
 impl SubAssign<u32> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: u32) {
-        let n = mem::replace(self, Self::ZERO);
+        let n = mem::replace(self, Self::zero());
         *self = n - other;
     }
 }
@@ -147,7 +147,7 @@ impl Sub<u64> for BigInt {
             NoSign => -BigInt::from(other),
             Minus => -BigInt::from(self.data + other),
             Plus => match self.data.cmp(&From::from(other)) {
-                Equal => Self::ZERO,
+                Equal => Self::zero(),
                 Greater => BigInt::from(self.data - other),
                 Less => -BigInt::from(other - self.data),
             },
@@ -158,7 +158,7 @@ impl Sub<u64> for BigInt {
 impl SubAssign<u64> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: u64) {
-        let n = mem::replace(self, Self::ZERO);
+        let n = mem::replace(self, Self::zero());
         *self = n - other;
     }
 }
@@ -172,7 +172,7 @@ impl Sub<u128> for BigInt {
             NoSign => -BigInt::from(other),
             Minus => -BigInt::from(self.data + other),
             Plus => match self.data.cmp(&From::from(other)) {
-                Equal => Self::ZERO,
+                Equal => Self::zero(),
                 Greater => BigInt::from(self.data - other),
                 Less => -BigInt::from(other - self.data),
             },
@@ -183,7 +183,7 @@ impl Sub<u128> for BigInt {
 impl SubAssign<u128> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: u128) {
-        let n = mem::replace(self, Self::ZERO);
+        let n = mem::replace(self, Self::zero());
         *self = n - other;
     }
 }
