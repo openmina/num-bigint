@@ -2,9 +2,10 @@ use super::BigInt;
 use super::Sign::{Minus, NoSign, Plus};
 
 use crate::big_digit::{self, BigDigit, DoubleBigDigit};
-use crate::biguint::IntDigits;
+use crate::biguint::{IntDigits, NDIGITS};
 
 use alloc::vec::Vec;
+use tinyvec::TinyVec;
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 use num_traits::{ToPrimitive, Zero};
@@ -48,7 +49,7 @@ fn bitand_pos_neg(a: &mut [BigDigit], b: &[BigDigit]) {
 // - 1 & +ff = ...f ff & ...0 ff = ...0 ff = +ff
 // -ff & + 1 = ...f 01 & ...0 01 = ...0 01 = + 1
 // answer is pos, has length of b
-fn bitand_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitand_neg_pos(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
         let twos_a = negate_carry(*ai, &mut carry_a);
@@ -69,7 +70,7 @@ fn bitand_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
 // -ff & - 1 = ...f 01 & ...f ff = ...f 01 = - ff
 // -ff & -fe = ...f 01 & ...f 02 = ...f 00 = -100
 // answer is neg, has length of longest with a possible carry
-fn bitand_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitand_neg_neg(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_b = 1;
     let mut carry_and = 1;
@@ -114,7 +115,7 @@ impl BitAnd<&BigInt> for &BigInt {
     #[inline]
     fn bitand(self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
-            (NoSign, _) | (_, NoSign) => BigInt::ZERO,
+            (NoSign, _) | (_, NoSign) => BigInt::zero(),
             (Plus, Plus) => BigInt::from(&self.data & &other.data),
             (Plus, Minus) => self.clone() & other,
             (Minus, Plus) => other.clone() & self,
@@ -173,7 +174,7 @@ impl BitAndAssign<&BigInt> for BigInt {
 // + 1 | -ff = ...0 01 | ...f 01 = ...f 01 = -ff
 // +ff | - 1 = ...0 ff | ...f ff = ...f ff = - 1
 // answer is neg, has length of b
-fn bitor_pos_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitor_pos_neg(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_b = 1;
     let mut carry_or = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -224,7 +225,7 @@ fn bitor_neg_pos(a: &mut [BigDigit], b: &[BigDigit]) {
 // - 1 | -ff = ...f ff | ...f 01 = ...f ff = -1
 // -ff | - 1 = ...f 01 | ...f ff = ...f ff = -1
 // answer is neg, has length of shortest
-fn bitor_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitor_neg_neg(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_b = 1;
     let mut carry_or = 1;
@@ -308,7 +309,7 @@ impl BitOrAssign<&BigInt> for BigInt {
 // + 1 ^ -ff = ...0 01 ^ ...f 01 = ...f 00 = -100
 // +ff ^ - 1 = ...0 ff ^ ...f ff = ...f 00 = -100
 // answer is neg, has length of longest with a possible carry
-fn bitxor_pos_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitxor_pos_neg(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_b = 1;
     let mut carry_xor = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -341,7 +342,7 @@ fn bitxor_pos_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
 // - 1 ^ +ff = ...f ff ^ ...0 ff = ...f 00 = -100
 // -ff ^ + 1 = ...f 01 ^ ...0 01 = ...f 00 = -100
 // answer is neg, has length of longest with a possible carry
-fn bitxor_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitxor_neg_pos(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_xor = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -374,7 +375,7 @@ fn bitxor_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
 // - 1 ^ -ff = ...f ff ^ ...f 01 = ...0 fe = +fe
 // -ff & - 1 = ...f 01 ^ ...f ff = ...0 fe = +fe
 // answer is pos, has length of longest
-fn bitxor_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitxor_neg_neg(a: &mut TinyVec<[BigDigit; NDIGITS]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_b = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {

@@ -305,7 +305,7 @@ impl CheckedSub for BigUint {
     fn checked_sub(&self, v: &BigUint) -> Option<BigUint> {
         match self.cmp(v) {
             Less => None,
-            Equal => Some(Self::ZERO),
+            Equal => Some(Self::zero()),
             Greater => Some(self.sub(v)),
         }
     }

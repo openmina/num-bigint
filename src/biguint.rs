@@ -2,6 +2,9 @@ use crate::big_digit::{self, BigDigit};
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use tinyvec::tiny_vec;
+use tinyvec::ArrayVec;
+use tinyvec::TinyVec;
 use core::cmp;
 use core::cmp::Ordering;
 use core::default::Default;
@@ -30,10 +33,27 @@ mod shift;
 pub(crate) use self::convert::to_str_radix_reversed;
 pub use self::iter::{U32Digits, U64Digits};
 
+pub const NDIGITS: usize = 32;
+
 /// A big unsigned integer type.
-pub struct BigUint {
-    data: Vec<BigDigit>,
+pub struct BigUint<const N: usize = NDIGITS> {
+    data: TinyVec<[u64; N]>,
 }
+
+// impl Drop for BigUint {
+//     fn drop(&mut self) {
+//         if self.data.capacity() > NDIGITS {
+//             eprintln!("len={:?}", self.data.capacity());
+//         }
+//     }
+// }
+
+// impl BigUint {
+//     pub fn take_data(self) -> TinyVec<[u64; NDIGITS]> {
+//         let Self { data } = self;
+//         data
+//     }
+// }
 
 // Note: derived `Clone` doesn't specialize `clone_from`,
 // but we want to keep the allocation in `data`.
@@ -97,7 +117,7 @@ fn cmp_slice(a: &[BigDigit], b: &[BigDigit]) -> Ordering {
 impl Default for BigUint {
     #[inline]
     fn default() -> BigUint {
-        Self::ZERO
+        Self::zero()
     }
 }
 
@@ -142,7 +162,7 @@ impl fmt::Octal for BigUint {
 impl Zero for BigUint {
     #[inline]
     fn zero() -> BigUint {
-        Self::ZERO
+        Self::zero()
     }
 
     #[inline]
@@ -156,15 +176,15 @@ impl Zero for BigUint {
     }
 }
 
-impl ConstZero for BigUint {
-    // forward to the inherent const
-    const ZERO: Self = Self::ZERO; // BigUint { data: Vec::new() };
-}
+// impl ConstZero for BigUint {
+//     // forward to the inherent const
+//     const ZERO: Self = Self::ZERO; // BigUint { data: Vec::new() };
+// }
 
 impl One for BigUint {
     #[inline]
     fn one() -> BigUint {
-        BigUint { data: vec![1] }
+        BigUint { data: tiny_vec![1] }
     }
 
     #[inline]
@@ -256,7 +276,7 @@ impl Integer for BigUint {
     #[inline]
     fn lcm(&self, other: &BigUint) -> BigUint {
         if self.is_zero() && other.is_zero() {
-            Self::ZERO
+            Self::zero()
         } else {
             self / self.gcd(other) * other
         }
@@ -268,7 +288,7 @@ impl Integer for BigUint {
     fn gcd_lcm(&self, other: &Self) -> (Self, Self) {
         let gcd = self.gcd(other);
         let lcm = if gcd.is_zero() {
-            Self::ZERO
+            Self::zero()
         } else {
             self / &gcd * other
         };
@@ -522,21 +542,30 @@ pub trait ToBigUint {
 /// Creates and initializes a [`BigUint`].
 ///
 /// The digits are in little-endian base matching `BigDigit`.
+// #[inline]
+// pub(crate) fn biguint_from_vec(digits: Vec<BigDigit>) -> BigUint {
+//     BigUint { data: digits.into_iter().collect() }.normalized()
+// }
+
 #[inline]
-pub(crate) fn biguint_from_vec(digits: Vec<BigDigit>) -> BigUint {
+pub(crate) fn biguint_from_tinyvec(digits: TinyVec<[BigDigit; NDIGITS]>) -> BigUint {
     BigUint { data: digits }.normalized()
 }
 
 impl BigUint {
-    /// A constant `BigUint` with value 0, useful for static initialization.
-    pub const ZERO: Self = BigUint { data: Vec::new() };
+    pub fn zero() -> Self {
+        BigUint { data: [].into_iter().collect() }
+    }
+
+    // /// A constant `BigUint` with value 0, useful for static initialization.
+    // pub const ZERO: Self = BigUint { data: TinyVec::Inline(ArrayVec::from_array_empty([0; 8])) };
 
     /// Creates and initializes a [`BigUint`].
     ///
     /// The base 2<sup>32</sup> digits are ordered least significant digit first.
     #[inline]
     pub fn new(digits: Vec<u32>) -> BigUint {
-        let mut big = Self::ZERO;
+        let mut big = Self::zero();
 
         cfg_digit_expr!(
             {
@@ -554,7 +583,7 @@ impl BigUint {
     /// The base 2<sup>32</sup> digits are ordered least significant digit first.
     #[inline]
     pub fn from_slice(slice: &[u32]) -> BigUint {
-        let mut big = Self::ZERO;
+        let mut big = Self::zero();
         big.assign_from_slice(slice);
         big
     }
@@ -595,7 +624,7 @@ impl BigUint {
     #[inline]
     pub fn from_bytes_be(bytes: &[u8]) -> BigUint {
         if bytes.is_empty() {
-            Self::ZERO
+            Self::zero()
         } else {
             let mut v = bytes.to_vec();
             v.reverse();
@@ -609,7 +638,7 @@ impl BigUint {
     #[inline]
     pub fn from_bytes_le(bytes: &[u8]) -> BigUint {
         if bytes.is_empty() {
-            Self::ZERO
+            Self::zero()
         } else {
             convert::from_bitwise_digits_le(bytes, 8)
         }
@@ -1070,7 +1099,7 @@ impl num_traits::ToBytes for BigUint {
 
 pub(crate) trait IntDigits {
     fn digits(&self) -> &[BigDigit];
-    fn digits_mut(&mut self) -> &mut Vec<BigDigit>;
+    fn digits_mut(&mut self) -> &mut TinyVec<[BigDigit; NDIGITS]>;
     fn normalize(&mut self);
     fn capacity(&self) -> usize;
     fn len(&self) -> usize;
@@ -1082,7 +1111,7 @@ impl IntDigits for BigUint {
         &self.data
     }
     #[inline]
-    fn digits_mut(&mut self) -> &mut Vec<BigDigit> {
+    fn digits_mut(&mut self) -> &mut TinyVec<[BigDigit; NDIGITS]> {
         &mut self.data
     }
     #[inline]

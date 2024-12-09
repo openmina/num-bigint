@@ -1,9 +1,10 @@
-use super::{biguint_from_vec, BigUint};
+use super::{biguint_from_tinyvec, BigUint};
 
 use crate::big_digit;
 
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
+use tinyvec::TinyVec;
 use core::mem;
 use core::ops::{Shl, ShlAssign, Shr, ShrAssign};
 use num_traits::{PrimInt, Zero};
@@ -27,9 +28,9 @@ fn biguint_shl2(n: Cow<'_, BigUint>, digits: usize, shift: u8) -> BigUint {
         0 => n.into_owned().data,
         _ => {
             let len = digits.saturating_add(n.data.len() + 1);
-            let mut data = Vec::with_capacity(len);
+            let mut data = TinyVec::with_capacity(len);
             data.resize(digits, 0);
-            data.extend(n.data.iter());
+            data.extend(n.data.iter().copied());
             data
         }
     };
@@ -47,7 +48,7 @@ fn biguint_shl2(n: Cow<'_, BigUint>, digits: usize, shift: u8) -> BigUint {
         }
     }
 
-    biguint_from_vec(data)
+    biguint_from_tinyvec(data)
 }
 
 #[inline]
@@ -70,10 +71,18 @@ fn biguint_shr2(n: Cow<'_, BigUint>, digits: usize, shift: u8) -> BigUint {
         n.set_zero();
         return n;
     }
+    let n_data_len = n.data.len();
+    // if n.data.len() > 6 {
+    //     eprintln!("{:?}", n.data.len());
+    // }
+    // dbg!(n.data.len());
     let mut data = match n {
-        Cow::Borrowed(n) => n.data[digits..].to_vec(),
+        Cow::Borrowed(n) => n.data[digits..].into_iter().copied().collect(),
         Cow::Owned(mut n) => {
-            n.data.drain(..digits);
+            if digits != 0 {
+                // eprintln!("draining digits={:?}", digits);
+                n.data.drain(..digits);
+            }
             n.data
         }
     };
@@ -88,7 +97,10 @@ fn biguint_shr2(n: Cow<'_, BigUint>, digits: usize, shift: u8) -> BigUint {
         }
     }
 
-    biguint_from_vec(data)
+    // if n_data_len > 6 || data.len() > 6 {
+    //     eprintln!("n.data={:?} data={:?}", n_data_len, data.len());
+    // }
+    biguint_from_tinyvec(data)
 }
 
 macro_rules! impl_shift {
@@ -136,7 +148,7 @@ macro_rules! impl_shift {
         impl ShlAssign<$rhs> for BigUint {
             #[inline]
             fn shl_assign(&mut self, rhs: $rhs) {
-                let n = mem::replace(self, Self::ZERO);
+                let n = mem::replace(self, Self::zero());
                 *self = n << rhs;
             }
         }
@@ -161,7 +173,7 @@ macro_rules! impl_shift {
         impl ShrAssign<$rhs> for BigUint {
             #[inline]
             fn shr_assign(&mut self, rhs: $rhs) {
-                let n = mem::replace(self, Self::ZERO);
+                let n = mem::replace(self, Self::zero());
                 *self = n >> rhs;
             }
         }

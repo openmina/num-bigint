@@ -1,7 +1,7 @@
 // This uses stdlib features higher than the MSRV
 #![allow(clippy::manual_range_contains)] // 1.35
 
-use super::{biguint_from_vec, BigUint, ToBigUint};
+use super::{biguint_from_tinyvec, BigUint, ToBigUint};
 
 use super::addition::add2;
 use super::division::{div_rem_digit, FAST_DIV_WIDE};
@@ -12,6 +12,7 @@ use crate::ParseBigIntError;
 use crate::TryFromBigIntError;
 
 use alloc::vec::Vec;
+use tinyvec::TinyVec;
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::convert::TryFrom;
 use core::mem;
@@ -57,7 +58,7 @@ pub(super) fn from_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
         })
         .collect();
 
-    biguint_from_vec(data)
+    biguint_from_tinyvec(data)
 }
 
 // Convert from a power of two radix (bits == ilog2(radix)) where bits doesn't evenly divide
@@ -70,7 +71,8 @@ fn from_inexact_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
     let big_digits = Integer::div_ceil(&total_bits, &big_digit::BITS.into())
         .to_usize()
         .unwrap_or(usize::MAX);
-    let mut data = Vec::with_capacity(big_digits);
+    let mut data = TinyVec::new();
+    // let mut data = Vec::with_capacity(big_digits);
 
     let mut d = 0;
     let mut dbits = 0; // number of bits we currently have in d
@@ -95,7 +97,7 @@ fn from_inexact_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
         data.push(d as BigDigit);
     }
 
-    biguint_from_vec(data)
+    biguint_from_tinyvec(data)
 }
 
 // Read little-endian radix digits
@@ -117,7 +119,8 @@ fn from_radix_digits_be(v: &[u8], radix: u32) -> BigUint {
         (bits / big_digit::BITS as usize) + 1
     };
 
-    let mut data = Vec::with_capacity(big_digits.to_usize().unwrap_or(0));
+    let mut data = TinyVec::new();
+    // let mut data = Vec::with_capacity(big_digits.to_usize().unwrap_or(0));
 
     let (base, power) = get_radix_base(radix);
     let radix = radix as BigDigit;
@@ -149,7 +152,7 @@ fn from_radix_digits_be(v: &[u8], radix: u32) -> BigUint {
         add2(&mut data, &[n]);
     }
 
-    biguint_from_vec(data)
+    biguint_from_tinyvec(data)
 }
 
 pub(super) fn from_radix_be(buf: &[u8], radix: u32) -> Option<BigUint> {
@@ -159,7 +162,7 @@ pub(super) fn from_radix_be(buf: &[u8], radix: u32) -> Option<BigUint> {
     );
 
     if buf.is_empty() {
-        return Some(BigUint::ZERO);
+        return Some(BigUint::zero());
     }
 
     if radix != 256 && buf.iter().any(|&b| b >= radix as u8) {
@@ -190,7 +193,7 @@ pub(super) fn from_radix_le(buf: &[u8], radix: u32) -> Option<BigUint> {
     );
 
     if buf.is_empty() {
-        return Some(BigUint::ZERO);
+        return Some(BigUint::zero());
     }
 
     if radix != 256 && buf.iter().any(|&b| b >= radix as u8) {
@@ -468,7 +471,7 @@ impl FromPrimitive for BigUint {
 
         // handle 0.x, -0.x
         if n.is_zero() {
-            return Some(Self::ZERO);
+            return Some(Self::zero());
         }
 
         let (mantissa, exponent, sign) = FloatCore::integer_decode(n);
@@ -490,7 +493,7 @@ impl FromPrimitive for BigUint {
 impl From<u64> for BigUint {
     #[inline]
     fn from(mut n: u64) -> Self {
-        let mut ret: BigUint = Self::ZERO;
+        let mut ret: BigUint = Self::zero();
 
         while n != 0 {
             ret.data.push(n as BigDigit);
@@ -505,7 +508,7 @@ impl From<u64> for BigUint {
 impl From<u128> for BigUint {
     #[inline]
     fn from(mut n: u128) -> Self {
-        let mut ret: BigUint = Self::ZERO;
+        let mut ret: BigUint = Self::zero();
 
         while n != 0 {
             ret.data.push(n as BigDigit);
@@ -592,7 +595,7 @@ impl From<bool> for BigUint {
         if x {
             One::one()
         } else {
-            Self::ZERO
+            Self::zero()
         }
     }
 }

@@ -98,12 +98,12 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/num-bigint/0.4")]
 #![warn(rust_2018_idioms)]
-#![no_std]
+// #![no_std]
 
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 extern crate std;
 
 use core::fmt;
@@ -115,14 +115,14 @@ mod bigint;
 mod bigrand;
 mod biguint;
 
-#[cfg(target_pointer_width = "32")]
-type UsizePromotion = u32;
-#[cfg(target_pointer_width = "64")]
+// #[cfg(target_pointer_width = "32")]
+// type UsizePromotion = u32;
+// #[cfg(target_pointer_width = "64")]
 type UsizePromotion = u64;
 
-#[cfg(target_pointer_width = "32")]
-type IsizePromotion = i32;
-#[cfg(target_pointer_width = "64")]
+// #[cfg(target_pointer_width = "32")]
+// type IsizePromotion = i32;
+// #[cfg(target_pointer_width = "64")]
 type IsizePromotion = i64;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
