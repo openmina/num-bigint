@@ -651,7 +651,7 @@ impl<const N: usize> BigInt<N> {
     ///            BigInt::parse_bytes(b"22405534230753963835153736737", 10).unwrap());
     /// ```
     #[inline]
-    pub fn from_bytes_be(sign: Sign, bytes: &[u8]) -> BigInt {
+    pub fn from_bytes_be(sign: Sign, bytes: &[u8]) -> BigInt<N> {
         BigInt::from_biguint(sign, BigUint::from_bytes_be(bytes))
     }
 
@@ -659,25 +659,8 @@ impl<const N: usize> BigInt<N> {
     ///
     /// The bytes are in little-endian byte order.
     #[inline]
-    pub fn from_bytes_le(sign: Sign, bytes: &[u8]) -> BigInt {
+    pub fn from_bytes_le(sign: Sign, bytes: &[u8]) -> BigInt<N> {
         BigInt::from_biguint(sign, BigUint::from_bytes_le(bytes))
-    }
-
-    /// Creates and initializes a [`BigInt`] from an array of bytes in
-    /// two's complement binary representation.
-    ///
-    /// The digits are in big-endian base 2<sup>8</sup>.
-    #[inline]
-    pub fn from_signed_bytes_be(digits: &[u8]) -> BigInt {
-        convert::from_signed_bytes_be(digits)
-    }
-
-    /// Creates and initializes a [`BigInt`] from an array of bytes in two's complement.
-    ///
-    /// The digits are in little-endian base 2<sup>8</sup>.
-    #[inline]
-    pub fn from_signed_bytes_le(digits: &[u8]) -> BigInt {
-        convert::from_signed_bytes_le(digits)
     }
 
     /// Creates and initializes a [`BigInt`].
@@ -1172,6 +1155,25 @@ impl<const N: usize> BigInt<N> {
         }
         // The top bit may have been cleared, so normalize
         self.normalize();
+    }
+}
+
+impl BigInt {
+    /// Creates and initializes a [`BigInt`] from an array of bytes in
+    /// two's complement binary representation.
+    ///
+    /// The digits are in big-endian base 2<sup>8</sup>.
+    #[inline]
+    pub fn from_signed_bytes_be(digits: &[u8]) -> BigInt {
+        convert::from_signed_bytes_be(digits)
+    }
+
+    /// Creates and initializes a [`BigInt`] from an array of bytes in two's complement.
+    ///
+    /// The digits are in little-endian base 2<sup>8</sup>.
+    #[inline]
+    pub fn from_signed_bytes_le(digits: &[u8]) -> BigInt {
+        convert::from_signed_bytes_le(digits)
     }
 }
 

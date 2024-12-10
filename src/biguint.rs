@@ -32,7 +32,8 @@ mod shift;
 pub(crate) use self::convert::to_str_radix_reversed;
 pub use self::iter::{U32Digits, U64Digits};
 
-pub const NLIMBS: usize = 32;
+/// 4 limbs by default (256 bits)
+pub const NLIMBS: usize = 4;
 
 /// A big unsigned integer type.
 pub struct BigUint<const N: usize = NLIMBS> {
