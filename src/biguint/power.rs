@@ -6,11 +6,11 @@ use crate::big_digit::{self, BigDigit};
 use num_integer::Integer;
 use num_traits::{One, Pow, ToPrimitive, Zero};
 
-impl Pow<&BigUint> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Pow<&BigUint<N>> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn pow(self, exp: &BigUint) -> BigUint {
+    fn pow(self, exp: &BigUint<N>) -> BigUint<N> {
         if self.is_one() || exp.is_zero() {
             BigUint::one()
         } else if self.is_zero() {
@@ -27,20 +27,20 @@ impl Pow<&BigUint> for BigUint {
     }
 }
 
-impl Pow<BigUint> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Pow<BigUint<N>> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn pow(self, exp: BigUint) -> BigUint {
+    fn pow(self, exp: BigUint<N>) -> BigUint<N> {
         Pow::pow(self, &exp)
     }
 }
 
-impl Pow<&BigUint> for &BigUint {
-    type Output = BigUint;
+impl<const N: usize> Pow<&BigUint<N>> for &BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn pow(self, exp: &BigUint) -> BigUint {
+    fn pow(self, exp: &BigUint<N>) -> BigUint<N> {
         if self.is_one() || exp.is_zero() {
             BigUint::one()
         } else if self.is_zero() {
@@ -51,21 +51,21 @@ impl Pow<&BigUint> for &BigUint {
     }
 }
 
-impl Pow<BigUint> for &BigUint {
-    type Output = BigUint;
+impl<const N: usize> Pow<BigUint<N>> for &BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn pow(self, exp: BigUint) -> BigUint {
+    fn pow(self, exp: BigUint<N>) -> BigUint<N> {
         Pow::pow(self, &exp)
     }
 }
 
 macro_rules! pow_impl {
     ($T:ty) => {
-        impl Pow<$T> for BigUint {
-            type Output = BigUint;
+        impl<const N: usize> Pow<$T> for BigUint<N> {
+            type Output = BigUint<N>;
 
-            fn pow(self, mut exp: $T) -> BigUint {
+            fn pow(self, mut exp: $T) -> BigUint<N> {
                 if exp == 0 {
                     return BigUint::one();
                 }
@@ -92,20 +92,20 @@ macro_rules! pow_impl {
             }
         }
 
-        impl Pow<&$T> for BigUint {
-            type Output = BigUint;
+        impl<const N: usize> Pow<&$T> for BigUint<N> {
+            type Output = BigUint<N>;
 
             #[inline]
-            fn pow(self, exp: &$T) -> BigUint {
+            fn pow(self, exp: &$T) -> BigUint<N> {
                 Pow::pow(self, *exp)
             }
         }
 
-        impl Pow<$T> for &BigUint {
-            type Output = BigUint;
+        impl<const N: usize> Pow<$T> for &BigUint<N> {
+            type Output = BigUint<N>;
 
             #[inline]
-            fn pow(self, exp: $T) -> BigUint {
+            fn pow(self, exp: $T) -> BigUint<N> {
                 if exp == 0 {
                     return BigUint::one();
                 }
@@ -113,11 +113,11 @@ macro_rules! pow_impl {
             }
         }
 
-        impl Pow<&$T> for &BigUint {
-            type Output = BigUint;
+        impl<const N: usize> Pow<&$T> for &BigUint<N> {
+            type Output = BigUint<N>;
 
             #[inline]
-            fn pow(self, exp: &$T) -> BigUint {
+            fn pow(self, exp: &$T) -> BigUint<N> {
                 Pow::pow(self, *exp)
             }
         }
@@ -131,7 +131,11 @@ pow_impl!(u64);
 pow_impl!(usize);
 pow_impl!(u128);
 
-pub(super) fn modpow(x: &BigUint, exponent: &BigUint, modulus: &BigUint) -> BigUint {
+pub(super) fn modpow<const N: usize>(
+    x: &BigUint<N>,
+    exponent: &BigUint<N>,
+    modulus: &BigUint<N>,
+) -> BigUint<N> {
     assert!(
         !modulus.is_zero(),
         "attempt to calculate with zero modulus!"
@@ -146,7 +150,11 @@ pub(super) fn modpow(x: &BigUint, exponent: &BigUint, modulus: &BigUint) -> BigU
     }
 }
 
-fn plain_modpow(base: &BigUint, exp_data: &[BigDigit], modulus: &BigUint) -> BigUint {
+fn plain_modpow<const N: usize>(
+    base: &BigUint<N>,
+    exp_data: &[BigDigit],
+    modulus: &BigUint<N>,
+) -> BigUint<N> {
     assert!(
         !modulus.is_zero(),
         "attempt to calculate with zero modulus!"
@@ -219,7 +227,7 @@ fn plain_modpow(base: &BigUint, exp_data: &[BigDigit], modulus: &BigUint) -> Big
 
 #[test]
 fn test_plain_modpow() {
-    let two = &BigUint::from(2u32);
+    let two = &BigUint::<32>::from(2u32);
     let modulus = BigUint::from(0x1100u32);
 
     let exp = vec![0, 0b1];
@@ -251,7 +259,7 @@ fn test_plain_modpow() {
 
 #[test]
 fn test_pow_biguint() {
-    let base = BigUint::from(5u8);
+    let base = BigUint::<32>::from(5u8);
     let exponent = BigUint::from(3u8);
 
     assert_eq!(BigUint::from(125u8), base.pow(exponent));

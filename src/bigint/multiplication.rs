@@ -21,66 +21,84 @@ impl Mul<Sign> for Sign {
     }
 }
 
-macro_rules! impl_mul {
-    ($(impl Mul<$Other:ty> for $Self:ty;)*) => {$(
-        impl Mul<$Other> for $Self {
-            type Output = BigInt;
+impl<const N: usize> Mul<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+    #[inline]
+    fn mul(self, other: BigInt<N>) -> BigInt<N> {
+        let BigInt { data: x, .. } = self;
+        let BigInt { data: y, .. } = other;
+        BigInt::from_biguint(self.sign * other.sign, x * y)
+    }
+}
+impl<const N: usize> Mul<BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
+    #[inline]
+    fn mul(self, other: BigInt<N>) -> BigInt<N> {
+        let BigInt { data: x, .. } = self;
+        let BigInt { data: y, .. } = other;
+        BigInt::from_biguint(self.sign * other.sign, x * y)
+    }
+}
+impl<const N: usize> Mul<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+    #[inline]
+    fn mul(self, other: &BigInt<N>) -> BigInt<N> {
+        let BigInt { data: x, .. } = self;
+        let BigInt { data: y, .. } = other;
+        BigInt::from_biguint(self.sign * other.sign, x * y)
+    }
+}
+impl<const N: usize> Mul<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
+    #[inline]
+    fn mul(self, other: &BigInt<N>) -> BigInt<N> {
+        let BigInt { data: x, .. } = self;
+        let BigInt { data: y, .. } = other;
+        BigInt::from_biguint(self.sign * other.sign, x * y)
+    }
+}
 
-            #[inline]
-            fn mul(self, other: $Other) -> BigInt {
-                // automatically match value/ref
-                let BigInt { data: x, .. } = self;
-                let BigInt { data: y, .. } = other;
-                BigInt::from_biguint(self.sign * other.sign, x * y)
-            }
+impl<const N: usize> MulAssign<BigInt<N>> for BigInt<N> {
+    #[inline]
+    fn mul_assign(&mut self, other: BigInt<N>) {
+        let BigInt { data: y, .. } = other;
+        self.data *= y;
+        if self.data.is_zero() {
+            self.sign = NoSign;
+        } else {
+            self.sign = self.sign * other.sign;
         }
-    )*}
+    }
 }
-impl_mul! {
-    impl Mul<BigInt> for BigInt;
-    impl Mul<BigInt> for &BigInt;
-    impl Mul<&BigInt> for BigInt;
-    impl Mul<&BigInt> for &BigInt;
-}
-
-macro_rules! impl_mul_assign {
-    ($(impl MulAssign<$Other:ty> for BigInt;)*) => {$(
-        impl MulAssign<$Other> for BigInt {
-            #[inline]
-            fn mul_assign(&mut self, other: $Other) {
-                // automatically match value/ref
-                let BigInt { data: y, .. } = other;
-                self.data *= y;
-                if self.data.is_zero() {
-                    self.sign = NoSign;
-                } else {
-                    self.sign = self.sign * other.sign;
-                }
-            }
+impl<const N: usize> MulAssign<&BigInt<N>> for BigInt<N> {
+    #[inline]
+    fn mul_assign(&mut self, other: &BigInt<N>) {
+        let BigInt { data: y, .. } = other;
+        self.data *= y;
+        if self.data.is_zero() {
+            self.sign = NoSign;
+        } else {
+            self.sign = self.sign * other.sign;
         }
-    )*}
-}
-impl_mul_assign! {
-    impl MulAssign<BigInt> for BigInt;
-    impl MulAssign<&BigInt> for BigInt;
+    }
 }
 
-promote_all_scalars!(impl Mul for BigInt, mul);
-promote_all_scalars_assign!(impl MulAssign for BigInt, mul_assign);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u32> for BigInt, mul);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u64> for BigInt, mul);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u128> for BigInt, mul);
+promote_all_scalars!(impl Mul for BigInt<N>, mul);
+promote_all_scalars_assign!(impl MulAssign for BigInt<N>, mul_assign);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u32> for BigInt<N>, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u64> for BigInt<N>, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u128> for BigInt<N>, mul);
 
-impl Mul<u32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Mul<u32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn mul(self, other: u32) -> BigInt {
+    fn mul(self, other: u32) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data * other)
     }
 }
 
-impl MulAssign<u32> for BigInt {
+impl<const N: usize> MulAssign<u32> for BigInt<N> {
     #[inline]
     fn mul_assign(&mut self, other: u32) {
         self.data *= other;
@@ -90,16 +108,16 @@ impl MulAssign<u32> for BigInt {
     }
 }
 
-impl Mul<u64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Mul<u64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn mul(self, other: u64) -> BigInt {
+    fn mul(self, other: u64) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data * other)
     }
 }
 
-impl MulAssign<u64> for BigInt {
+impl<const N: usize> MulAssign<u64> for BigInt<N> {
     #[inline]
     fn mul_assign(&mut self, other: u64) {
         self.data *= other;
@@ -109,16 +127,16 @@ impl MulAssign<u64> for BigInt {
     }
 }
 
-impl Mul<u128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Mul<u128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn mul(self, other: u128) -> BigInt {
+    fn mul(self, other: u128) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data * other)
     }
 }
 
-impl MulAssign<u128> for BigInt {
+impl<const N: usize> MulAssign<u128> for BigInt<N> {
     #[inline]
     fn mul_assign(&mut self, other: u128) {
         self.data *= other;
@@ -128,15 +146,15 @@ impl MulAssign<u128> for BigInt {
     }
 }
 
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<i32> for BigInt, mul);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<i64> for BigInt, mul);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<i128> for BigInt, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<i32> for BigInt<N>, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<i64> for BigInt<N>, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<i128> for BigInt<N>, mul);
 
-impl Mul<i32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Mul<i32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn mul(self, other: i32) -> BigInt {
+    fn mul(self, other: i32) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self * u,
             Negative(u) => -self * u,
@@ -144,7 +162,7 @@ impl Mul<i32> for BigInt {
     }
 }
 
-impl MulAssign<i32> for BigInt {
+impl<const N: usize> MulAssign<i32> for BigInt<N> {
     #[inline]
     fn mul_assign(&mut self, other: i32) {
         match other.checked_uabs() {
@@ -157,11 +175,11 @@ impl MulAssign<i32> for BigInt {
     }
 }
 
-impl Mul<i64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Mul<i64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn mul(self, other: i64) -> BigInt {
+    fn mul(self, other: i64) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self * u,
             Negative(u) => -self * u,
@@ -169,7 +187,7 @@ impl Mul<i64> for BigInt {
     }
 }
 
-impl MulAssign<i64> for BigInt {
+impl<const N: usize> MulAssign<i64> for BigInt<N> {
     #[inline]
     fn mul_assign(&mut self, other: i64) {
         match other.checked_uabs() {
@@ -182,11 +200,11 @@ impl MulAssign<i64> for BigInt {
     }
 }
 
-impl Mul<i128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Mul<i128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn mul(self, other: i128) -> BigInt {
+    fn mul(self, other: i128) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self * u,
             Negative(u) => -self * u,
@@ -194,7 +212,7 @@ impl Mul<i128> for BigInt {
     }
 }
 
-impl MulAssign<i128> for BigInt {
+impl<const N: usize> MulAssign<i128> for BigInt<N> {
     #[inline]
     fn mul_assign(&mut self, other: i128) {
         match other.checked_uabs() {
@@ -207,9 +225,9 @@ impl MulAssign<i128> for BigInt {
     }
 }
 
-impl CheckedMul for BigInt {
+impl<const N: usize> CheckedMul for BigInt<N> {
     #[inline]
-    fn checked_mul(&self, v: &BigInt) -> Option<BigInt> {
+    fn checked_mul(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         Some(self.mul(v))
     }
 }

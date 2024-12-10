@@ -22,39 +22,39 @@ fn powsign<T: Integer>(sign: Sign, other: &T) -> Sign {
 
 macro_rules! pow_impl {
     ($T:ty) => {
-        impl Pow<$T> for BigInt {
-            type Output = BigInt;
+        impl<const N: usize> Pow<$T> for BigInt<N> {
+            type Output = BigInt<N>;
 
             #[inline]
-            fn pow(self, rhs: $T) -> BigInt {
-                BigInt::from_biguint(powsign(self.sign, &rhs), self.data.pow(rhs))
+            fn pow(self, rhs: $T) -> BigInt<N> {
+                BigInt::<N>::from_biguint(powsign(self.sign, &rhs), self.data.pow(rhs))
             }
         }
 
-        impl Pow<&$T> for BigInt {
-            type Output = BigInt;
+        impl<const N: usize> Pow<&$T> for BigInt<N> {
+            type Output = BigInt<N>;
 
             #[inline]
-            fn pow(self, rhs: &$T) -> BigInt {
-                BigInt::from_biguint(powsign(self.sign, rhs), self.data.pow(rhs))
+            fn pow(self, rhs: &$T) -> BigInt<N> {
+                BigInt::<N>::from_biguint(powsign(self.sign, rhs), self.data.pow(rhs))
             }
         }
 
-        impl Pow<$T> for &BigInt {
-            type Output = BigInt;
+        impl<const N: usize> Pow<$T> for &BigInt<N> {
+            type Output = BigInt<N>;
 
             #[inline]
-            fn pow(self, rhs: $T) -> BigInt {
-                BigInt::from_biguint(powsign(self.sign, &rhs), Pow::pow(&self.data, rhs))
+            fn pow(self, rhs: $T) -> BigInt<N> {
+                BigInt::<N>::from_biguint(powsign(self.sign, &rhs), Pow::pow(&self.data, rhs))
             }
         }
 
-        impl Pow<&$T> for &BigInt {
-            type Output = BigInt;
+        impl<const N: usize> Pow<&$T> for &BigInt<N> {
+            type Output = BigInt<N>;
 
             #[inline]
-            fn pow(self, rhs: &$T) -> BigInt {
-                BigInt::from_biguint(powsign(self.sign, rhs), Pow::pow(&self.data, rhs))
+            fn pow(self, rhs: &$T) -> BigInt<N> {
+                BigInt::<N>::from_biguint(powsign(self.sign, rhs), Pow::pow(&self.data, rhs))
             }
         }
     };
@@ -66,9 +66,13 @@ pow_impl!(u32);
 pow_impl!(u64);
 pow_impl!(usize);
 pow_impl!(u128);
-pow_impl!(BigUint);
+pow_impl!(BigUint<N>);
 
-pub(super) fn modpow(x: &BigInt, exponent: &BigInt, modulus: &BigInt) -> BigInt {
+pub(super) fn modpow<const N: usize>(
+    x: &BigInt<N>,
+    exponent: &BigInt<N>,
+    modulus: &BigInt<N>,
+) -> BigInt<N> {
     assert!(
         !exponent.is_negative(),
         "negative exponentiation is not supported!"

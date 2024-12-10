@@ -29,7 +29,7 @@ fn inv_mod_alt(b: BigDigit) -> BigDigit {
 }
 
 impl MontyReducer {
-    fn new(n: &BigUint) -> Self {
+    fn new<const N: usize>(n: &BigUint<N>) -> Self {
         let n0inv = inv_mod_alt(n.data[0]);
         MontyReducer { n0inv }
     }
@@ -43,7 +43,13 @@ impl MontyReducer {
 /// x and y are required to satisfy 0 <= z < 2**(n*_W) and then the result
 /// z is guaranteed to satisfy 0 <= z < 2**(n*_W), but it may not be < m.
 #[allow(clippy::many_single_char_names)]
-fn montgomery(x: &BigUint, y: &BigUint, m: &BigUint, k: BigDigit, n: usize) -> BigUint {
+fn montgomery<const N: usize>(
+    x: &BigUint<N>,
+    y: &BigUint<N>,
+    m: &BigUint<N>,
+    k: BigDigit,
+    n: usize,
+) -> BigUint<N> {
     // This code assumes x, y, m are all the same length, n.
     // (required by addMulVVW and the for loop).
     // It also assumes that x, y are already reduced mod m,
@@ -134,7 +140,11 @@ fn mul_add_www(x: BigDigit, y: BigDigit, c: BigDigit) -> (BigDigit, BigDigit) {
 
 /// Calculates x ** y mod m using a fixed, 4-bit window.
 #[allow(clippy::many_single_char_names)]
-pub(super) fn monty_modpow(x: &BigUint, y: &BigUint, m: &BigUint) -> BigUint {
+pub(super) fn monty_modpow<const N: usize>(
+    x: &BigUint<N>,
+    y: &BigUint<N>,
+    m: &BigUint<N>,
+) -> BigUint<N> {
     assert!(m.data[0] & 1 == 1);
     let mr = MontyReducer::new(m);
     let num_words = m.data.len();

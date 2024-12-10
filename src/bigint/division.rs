@@ -8,42 +8,43 @@ use core::ops::{Div, DivAssign, Rem, RemAssign};
 use num_integer::Integer;
 use num_traits::{CheckedDiv, CheckedEuclid, Euclid, Signed, ToPrimitive, Zero};
 
-forward_all_binop_to_ref_ref!(impl Div for BigInt, div);
+forward_all_binop_to_ref_ref!(impl Div for BigInt<N>, div);
 
-impl Div<&BigInt> for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> Div<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: &BigInt) -> BigInt {
+    fn div(self, other: &BigInt<N>) -> BigInt<N> {
         let (q, _) = self.div_rem(other);
         q
     }
 }
 
-impl DivAssign<&BigInt> for BigInt {
+impl<const N: usize> DivAssign<&BigInt<N>> for BigInt<N> {
     #[inline]
-    fn div_assign(&mut self, other: &BigInt) {
+    fn div_assign(&mut self, other: &BigInt<N>) {
         *self = &*self / other;
     }
 }
-forward_val_assign!(impl DivAssign for BigInt, div_assign);
 
-promote_all_scalars!(impl Div for BigInt, div);
-promote_all_scalars_assign!(impl DivAssign for BigInt, div_assign);
-forward_all_scalar_binop_to_val_val!(impl Div<u32> for BigInt, div);
-forward_all_scalar_binop_to_val_val!(impl Div<u64> for BigInt, div);
-forward_all_scalar_binop_to_val_val!(impl Div<u128> for BigInt, div);
+forward_val_assign!(impl DivAssign for BigInt<N>, div_assign);
 
-impl Div<u32> for BigInt {
-    type Output = BigInt;
+promote_all_scalars!(impl Div for BigInt<N>, div);
+promote_all_scalars_assign!(impl DivAssign for BigInt<N>, div_assign);
+forward_all_scalar_binop_to_val_val!(impl Div<u32> for BigInt<N>, div);
+forward_all_scalar_binop_to_val_val!(impl Div<u64> for BigInt<N>, div);
+forward_all_scalar_binop_to_val_val!(impl Div<u128> for BigInt<N>, div);
+
+impl<const N: usize> Div<u32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: u32) -> BigInt {
+    fn div(self, other: u32) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data / other)
     }
 }
 
-impl DivAssign<u32> for BigInt {
+impl<const N: usize> DivAssign<u32> for BigInt<N> {
     #[inline]
     fn div_assign(&mut self, other: u32) {
         self.data /= other;
@@ -53,25 +54,25 @@ impl DivAssign<u32> for BigInt {
     }
 }
 
-impl Div<BigInt> for u32 {
-    type Output = BigInt;
+impl<const N: usize> Div<BigInt<N>> for u32 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: BigInt) -> BigInt {
+    fn div(self, other: BigInt<N>) -> BigInt<N> {
         BigInt::from_biguint(other.sign, self / other.data)
     }
 }
 
-impl Div<u64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Div<u64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: u64) -> BigInt {
+    fn div(self, other: u64) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data / other)
     }
 }
 
-impl DivAssign<u64> for BigInt {
+impl<const N: usize> DivAssign<u64> for BigInt<N> {
     #[inline]
     fn div_assign(&mut self, other: u64) {
         self.data /= other;
@@ -81,25 +82,25 @@ impl DivAssign<u64> for BigInt {
     }
 }
 
-impl Div<BigInt> for u64 {
-    type Output = BigInt;
+impl<const N: usize> Div<BigInt<N>> for u64 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: BigInt) -> BigInt {
+    fn div(self, other: BigInt<N>) -> BigInt<N> {
         BigInt::from_biguint(other.sign, self / other.data)
     }
 }
 
-impl Div<u128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Div<u128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: u128) -> BigInt {
+    fn div(self, other: u128) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data / other)
     }
 }
 
-impl DivAssign<u128> for BigInt {
+impl<const N: usize> DivAssign<u128> for BigInt<N> {
     #[inline]
     fn div_assign(&mut self, other: u128) {
         self.data /= other;
@@ -109,24 +110,24 @@ impl DivAssign<u128> for BigInt {
     }
 }
 
-impl Div<BigInt> for u128 {
-    type Output = BigInt;
+impl<const N: usize> Div<BigInt<N>> for u128 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: BigInt) -> BigInt {
+    fn div(self, other: BigInt<N>) -> BigInt<N> {
         BigInt::from_biguint(other.sign, self / other.data)
     }
 }
 
-forward_all_scalar_binop_to_val_val!(impl Div<i32> for BigInt, div);
-forward_all_scalar_binop_to_val_val!(impl Div<i64> for BigInt, div);
-forward_all_scalar_binop_to_val_val!(impl Div<i128> for BigInt, div);
+forward_all_scalar_binop_to_val_val!(impl Div<i32> for BigInt<N>, div);
+forward_all_scalar_binop_to_val_val!(impl Div<i64> for BigInt<N>, div);
+forward_all_scalar_binop_to_val_val!(impl Div<i128> for BigInt<N>, div);
 
-impl Div<i32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Div<i32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: i32) -> BigInt {
+    fn div(self, other: i32) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self / u,
             Negative(u) => -self / u,
@@ -134,7 +135,7 @@ impl Div<i32> for BigInt {
     }
 }
 
-impl DivAssign<i32> for BigInt {
+impl<const N: usize> DivAssign<i32> for BigInt<N> {
     #[inline]
     fn div_assign(&mut self, other: i32) {
         match other.checked_uabs() {
@@ -147,11 +148,11 @@ impl DivAssign<i32> for BigInt {
     }
 }
 
-impl Div<BigInt> for i32 {
-    type Output = BigInt;
+impl<const N: usize> Div<BigInt<N>> for i32 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: BigInt) -> BigInt {
+    fn div(self, other: BigInt<N>) -> BigInt<N> {
         match self.checked_uabs() {
             Positive(u) => u / other,
             Negative(u) => u / -other,
@@ -159,11 +160,11 @@ impl Div<BigInt> for i32 {
     }
 }
 
-impl Div<i64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Div<i64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: i64) -> BigInt {
+    fn div(self, other: i64) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self / u,
             Negative(u) => -self / u,
@@ -171,7 +172,7 @@ impl Div<i64> for BigInt {
     }
 }
 
-impl DivAssign<i64> for BigInt {
+impl<const N: usize> DivAssign<i64> for BigInt<N> {
     #[inline]
     fn div_assign(&mut self, other: i64) {
         match other.checked_uabs() {
@@ -184,11 +185,11 @@ impl DivAssign<i64> for BigInt {
     }
 }
 
-impl Div<BigInt> for i64 {
-    type Output = BigInt;
+impl<const N: usize> Div<BigInt<N>> for i64 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: BigInt) -> BigInt {
+    fn div(self, other: BigInt<N>) -> BigInt<N> {
         match self.checked_uabs() {
             Positive(u) => u / other,
             Negative(u) => u / -other,
@@ -196,11 +197,11 @@ impl Div<BigInt> for i64 {
     }
 }
 
-impl Div<i128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Div<i128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: i128) -> BigInt {
+    fn div(self, other: i128) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self / u,
             Negative(u) => -self / u,
@@ -208,7 +209,7 @@ impl Div<i128> for BigInt {
     }
 }
 
-impl DivAssign<i128> for BigInt {
+impl<const N: usize> DivAssign<i128> for BigInt<N> {
     #[inline]
     fn div_assign(&mut self, other: i128) {
         match other.checked_uabs() {
@@ -221,11 +222,11 @@ impl DivAssign<i128> for BigInt {
     }
 }
 
-impl Div<BigInt> for i128 {
-    type Output = BigInt;
+impl<const N: usize> Div<BigInt<N>> for i128 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn div(self, other: BigInt) -> BigInt {
+    fn div(self, other: BigInt<N>) -> BigInt<N> {
         match self.checked_uabs() {
             Positive(u) => u / other,
             Negative(u) => u / -other,
@@ -233,13 +234,13 @@ impl Div<BigInt> for i128 {
     }
 }
 
-forward_all_binop_to_ref_ref!(impl Rem for BigInt, rem);
+forward_all_binop_to_ref_ref!(impl Rem for BigInt<N>, rem);
 
-impl Rem<&BigInt> for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: &BigInt) -> BigInt {
+    fn rem(self, other: &BigInt<N>) -> BigInt<N> {
         if let Some(other) = other.to_u32() {
             self % other
         } else if let Some(other) = other.to_i32() {
@@ -251,30 +252,35 @@ impl Rem<&BigInt> for &BigInt {
     }
 }
 
-impl RemAssign<&BigInt> for BigInt {
+impl<const N: usize> RemAssign<&BigInt<N>> for BigInt<N> {
     #[inline]
-    fn rem_assign(&mut self, other: &BigInt) {
+    fn rem_assign(&mut self, other: &BigInt<N>) {
         *self = &*self % other;
     }
 }
-forward_val_assign!(impl RemAssign for BigInt, rem_assign);
+impl<const N: usize> RemAssign<BigInt<N>> for BigInt<N> {
+    #[inline]
+    fn rem_assign(&mut self, other: BigInt<N>) {
+        self.rem_assign(&other);
+    }
+}
 
-promote_all_scalars!(impl Rem for BigInt, rem);
-promote_all_scalars_assign!(impl RemAssign for BigInt, rem_assign);
-forward_all_scalar_binop_to_val_val!(impl Rem<u32> for BigInt, rem);
-forward_all_scalar_binop_to_val_val!(impl Rem<u64> for BigInt, rem);
-forward_all_scalar_binop_to_val_val!(impl Rem<u128> for BigInt, rem);
+promote_all_scalars!(impl Rem for BigInt<N>, rem);
+promote_all_scalars_assign!(impl RemAssign for BigInt<N>, rem_assign);
+forward_all_scalar_binop_to_val_val!(impl Rem<u32> for BigInt<N>, rem);
+forward_all_scalar_binop_to_val_val!(impl Rem<u64> for BigInt<N>, rem);
+forward_all_scalar_binop_to_val_val!(impl Rem<u128> for BigInt<N>, rem);
 
-impl Rem<u32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<u32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: u32) -> BigInt {
+    fn rem(self, other: u32) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data % other)
     }
 }
 
-impl RemAssign<u32> for BigInt {
+impl<const N: usize> RemAssign<u32> for BigInt<N> {
     #[inline]
     fn rem_assign(&mut self, other: u32) {
         self.data %= other;
@@ -284,25 +290,25 @@ impl RemAssign<u32> for BigInt {
     }
 }
 
-impl Rem<BigInt> for u32 {
-    type Output = BigInt;
+impl<const N: usize> Rem<BigInt<N>> for u32 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: BigInt) -> BigInt {
+    fn rem(self, other: BigInt<N>) -> BigInt<N> {
         BigInt::from(self % other.data)
     }
 }
 
-impl Rem<u64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<u64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: u64) -> BigInt {
+    fn rem(self, other: u64) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data % other)
     }
 }
 
-impl RemAssign<u64> for BigInt {
+impl<const N: usize> RemAssign<u64> for BigInt<N> {
     #[inline]
     fn rem_assign(&mut self, other: u64) {
         self.data %= other;
@@ -312,25 +318,25 @@ impl RemAssign<u64> for BigInt {
     }
 }
 
-impl Rem<BigInt> for u64 {
-    type Output = BigInt;
+impl<const N: usize> Rem<BigInt<N>> for u64 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: BigInt) -> BigInt {
+    fn rem(self, other: BigInt<N>) -> BigInt<N> {
         BigInt::from(self % other.data)
     }
 }
 
-impl Rem<u128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<u128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: u128) -> BigInt {
+    fn rem(self, other: u128) -> BigInt<N> {
         BigInt::from_biguint(self.sign, self.data % other)
     }
 }
 
-impl RemAssign<u128> for BigInt {
+impl<const N: usize> RemAssign<u128> for BigInt<N> {
     #[inline]
     fn rem_assign(&mut self, other: u128) {
         self.data %= other;
@@ -340,40 +346,40 @@ impl RemAssign<u128> for BigInt {
     }
 }
 
-impl Rem<BigInt> for u128 {
-    type Output = BigInt;
+impl<const N: usize> Rem<BigInt<N>> for u128 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: BigInt) -> BigInt {
+    fn rem(self, other: BigInt<N>) -> BigInt<N> {
         BigInt::from(self % other.data)
     }
 }
 
-forward_all_scalar_binop_to_val_val!(impl Rem<i32> for BigInt, rem);
-forward_all_scalar_binop_to_val_val!(impl Rem<i64> for BigInt, rem);
-forward_all_scalar_binop_to_val_val!(impl Rem<i128> for BigInt, rem);
+forward_all_scalar_binop_to_val_val!(impl Rem<i32> for BigInt<N>, rem);
+forward_all_scalar_binop_to_val_val!(impl Rem<i64> for BigInt<N>, rem);
+forward_all_scalar_binop_to_val_val!(impl Rem<i128> for BigInt<N>, rem);
 
-impl Rem<i32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<i32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: i32) -> BigInt {
+    fn rem(self, other: i32) -> BigInt<N> {
         self % other.unsigned_abs()
     }
 }
 
-impl RemAssign<i32> for BigInt {
+impl<const N: usize> RemAssign<i32> for BigInt<N> {
     #[inline]
     fn rem_assign(&mut self, other: i32) {
         *self %= other.unsigned_abs();
     }
 }
 
-impl Rem<BigInt> for i32 {
-    type Output = BigInt;
+impl<const N: usize> Rem<BigInt<N>> for i32 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: BigInt) -> BigInt {
+    fn rem(self, other: BigInt<N>) -> BigInt<N> {
         match self.checked_uabs() {
             Positive(u) => u % other,
             Negative(u) => -(u % other),
@@ -381,27 +387,27 @@ impl Rem<BigInt> for i32 {
     }
 }
 
-impl Rem<i64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<i64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: i64) -> BigInt {
+    fn rem(self, other: i64) -> BigInt<N> {
         self % other.unsigned_abs()
     }
 }
 
-impl RemAssign<i64> for BigInt {
+impl<const N: usize> RemAssign<i64> for BigInt<N> {
     #[inline]
     fn rem_assign(&mut self, other: i64) {
         *self %= other.unsigned_abs();
     }
 }
 
-impl Rem<BigInt> for i64 {
-    type Output = BigInt;
+impl<const N: usize> Rem<BigInt<N>> for i64 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: BigInt) -> BigInt {
+    fn rem(self, other: BigInt<N>) -> BigInt<N> {
         match self.checked_uabs() {
             Positive(u) => u % other,
             Negative(u) => -(u % other),
@@ -409,27 +415,27 @@ impl Rem<BigInt> for i64 {
     }
 }
 
-impl Rem<i128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Rem<i128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: i128) -> BigInt {
+    fn rem(self, other: i128) -> BigInt<N> {
         self % other.unsigned_abs()
     }
 }
 
-impl RemAssign<i128> for BigInt {
+impl<const N: usize> RemAssign<i128> for BigInt<N> {
     #[inline]
     fn rem_assign(&mut self, other: i128) {
         *self %= other.unsigned_abs();
     }
 }
 
-impl Rem<BigInt> for i128 {
-    type Output = BigInt;
+impl<const N: usize> Rem<BigInt<N>> for i128 {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn rem(self, other: BigInt) -> BigInt {
+    fn rem(self, other: BigInt<N>) -> BigInt<N> {
         match self.checked_uabs() {
             Positive(u) => u % other,
             Negative(u) => -(u % other),
@@ -437,9 +443,9 @@ impl Rem<BigInt> for i128 {
     }
 }
 
-impl CheckedDiv for BigInt {
+impl<const N: usize> CheckedDiv for BigInt<N> {
     #[inline]
-    fn checked_div(&self, v: &BigInt) -> Option<BigInt> {
+    fn checked_div(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         if v.is_zero() {
             return None;
         }
@@ -447,9 +453,9 @@ impl CheckedDiv for BigInt {
     }
 }
 
-impl CheckedEuclid for BigInt {
+impl<const N: usize> CheckedEuclid for BigInt<N> {
     #[inline]
-    fn checked_div_euclid(&self, v: &BigInt) -> Option<BigInt> {
+    fn checked_div_euclid(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         if v.is_zero() {
             return None;
         }
@@ -457,7 +463,7 @@ impl CheckedEuclid for BigInt {
     }
 
     #[inline]
-    fn checked_rem_euclid(&self, v: &BigInt) -> Option<BigInt> {
+    fn checked_rem_euclid(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         if v.is_zero() {
             return None;
         }
@@ -469,9 +475,9 @@ impl CheckedEuclid for BigInt {
     }
 }
 
-impl Euclid for BigInt {
+impl<const N: usize> Euclid for BigInt<N> {
     #[inline]
-    fn div_euclid(&self, v: &BigInt) -> BigInt {
+    fn div_euclid(&self, v: &BigInt<N>) -> BigInt<N> {
         let (q, r) = self.div_rem(v);
         if r.is_negative() {
             if v.is_positive() {
@@ -485,7 +491,7 @@ impl Euclid for BigInt {
     }
 
     #[inline]
-    fn rem_euclid(&self, v: &BigInt) -> BigInt {
+    fn rem_euclid(&self, v: &BigInt<N>) -> BigInt<N> {
         let r = self % v;
         if r.is_negative() {
             if v.is_positive() {

@@ -12,7 +12,6 @@ use crate::ParseBigIntError;
 use crate::TryFromBigIntError;
 
 use alloc::vec::Vec;
-use tinyvec::TinyVec;
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::convert::TryFrom;
 use core::mem;
@@ -20,6 +19,7 @@ use core::str::FromStr;
 use num_integer::{Integer, Roots};
 use num_traits::float::FloatCore;
 use num_traits::{FromPrimitive, Num, One, PrimInt, ToPrimitive, Zero};
+use tinyvec::TinyVec;
 
 /// Find last set bit
 /// fls(0) == 0, fls(u32::MAX) == 32
@@ -31,18 +31,18 @@ fn ilog2<T: PrimInt>(v: T) -> u8 {
     fls(v) - 1
 }
 
-impl FromStr for BigUint {
+impl<const N: usize> FromStr for BigUint<N> {
     type Err = ParseBigIntError;
 
     #[inline]
-    fn from_str(s: &str) -> Result<BigUint, ParseBigIntError> {
+    fn from_str(s: &str) -> Result<BigUint<N>, ParseBigIntError> {
         BigUint::from_str_radix(s, 10)
     }
 }
 
 // Convert from a power of two radix (bits == ilog2(radix)) where bits evenly divides
 // BigDigit::BITS
-pub(super) fn from_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
+pub(super) fn from_bitwise_digits_le<const N: usize>(v: &[u8], bits: u8) -> BigUint<N> {
     debug_assert!(!v.is_empty() && bits <= 8 && big_digit::BITS % bits == 0);
     debug_assert!(v.iter().all(|&c| BigDigit::from(c) < (1 << bits)));
 
@@ -63,14 +63,14 @@ pub(super) fn from_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
 
 // Convert from a power of two radix (bits == ilog2(radix)) where bits doesn't evenly divide
 // BigDigit::BITS
-fn from_inexact_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
+fn from_inexact_bitwise_digits_le<const N: usize>(v: &[u8], bits: u8) -> BigUint<N> {
     debug_assert!(!v.is_empty() && bits <= 8 && big_digit::BITS % bits != 0);
     debug_assert!(v.iter().all(|&c| BigDigit::from(c) < (1 << bits)));
 
-    let total_bits = (v.len() as u64).saturating_mul(bits.into());
-    let big_digits = Integer::div_ceil(&total_bits, &big_digit::BITS.into())
-        .to_usize()
-        .unwrap_or(usize::MAX);
+    // let total_bits = (v.len() as u64).saturating_mul(bits.into());
+    // let big_digits = Integer::div_ceil(&total_bits, &big_digit::BITS.into())
+    //     .to_usize()
+    //     .unwrap_or(usize::MAX);
     let mut data = TinyVec::new();
     // let mut data = Vec::with_capacity(big_digits);
 
@@ -101,23 +101,23 @@ fn from_inexact_bitwise_digits_le(v: &[u8], bits: u8) -> BigUint {
 }
 
 // Read little-endian radix digits
-fn from_radix_digits_be(v: &[u8], radix: u32) -> BigUint {
+fn from_radix_digits_be<const N: usize>(v: &[u8], radix: u32) -> BigUint<N> {
     debug_assert!(!v.is_empty() && !radix.is_power_of_two());
     debug_assert!(v.iter().all(|&c| u32::from(c) < radix));
 
     // Estimate how big the result will be, so we can pre-allocate it.
-    #[cfg(feature = "std")]
-    let big_digits = {
-        let radix_log2 = f64::from(radix).log2();
-        let bits = radix_log2 * v.len() as f64;
-        (bits / big_digit::BITS as f64).ceil()
-    };
-    #[cfg(not(feature = "std"))]
-    let big_digits = {
-        let radix_log2 = ilog2(radix.next_power_of_two()) as usize;
-        let bits = radix_log2 * v.len();
-        (bits / big_digit::BITS as usize) + 1
-    };
+    // #[cfg(feature = "std")]
+    // let big_digits = {
+    //     let radix_log2 = f64::from(radix).log2();
+    //     let bits = radix_log2 * v.len() as f64;
+    //     (bits / big_digit::BITS as f64).ceil()
+    // };
+    // #[cfg(not(feature = "std"))]
+    // let big_digits = {
+    //     let radix_log2 = ilog2(radix.next_power_of_two()) as usize;
+    //     let bits = radix_log2 * v.len();
+    //     (bits / big_digit::BITS as usize) + 1
+    // };
 
     let mut data = TinyVec::new();
     // let mut data = Vec::with_capacity(big_digits.to_usize().unwrap_or(0));
@@ -155,7 +155,7 @@ fn from_radix_digits_be(v: &[u8], radix: u32) -> BigUint {
     biguint_from_tinyvec(data)
 }
 
-pub(super) fn from_radix_be(buf: &[u8], radix: u32) -> Option<BigUint> {
+pub(super) fn from_radix_be<const N: usize>(buf: &[u8], radix: u32) -> Option<BigUint<N>> {
     assert!(
         2 <= radix && radix <= 256,
         "The radix must be within 2...256"
@@ -186,7 +186,7 @@ pub(super) fn from_radix_be(buf: &[u8], radix: u32) -> Option<BigUint> {
     Some(res)
 }
 
-pub(super) fn from_radix_le(buf: &[u8], radix: u32) -> Option<BigUint> {
+pub(super) fn from_radix_le<const N: usize>(buf: &[u8], radix: u32) -> Option<BigUint<N>> {
     assert!(
         2 <= radix && radix <= 256,
         "The radix must be within 2...256"
@@ -217,11 +217,11 @@ pub(super) fn from_radix_le(buf: &[u8], radix: u32) -> Option<BigUint> {
     Some(res)
 }
 
-impl Num for BigUint {
+impl<const N: usize> Num for BigUint<N> {
     type FromStrRadixErr = ParseBigIntError;
 
     /// Creates and initializes a `BigUint`.
-    fn from_str_radix(s: &str, radix: u32) -> Result<BigUint, ParseBigIntError> {
+    fn from_str_radix(s: &str, radix: u32) -> Result<BigUint<N>, ParseBigIntError> {
         assert!(2 <= radix && radix <= 36, "The radix must be within 2...36");
         let mut s = s;
         if let Some(tail) = s.strip_prefix('+') {
@@ -272,7 +272,7 @@ impl Num for BigUint {
     }
 }
 
-fn high_bits_to_u64(v: &BigUint) -> u64 {
+fn high_bits_to_u64<const N: usize>(v: &BigUint<N>) -> u64 {
     match v.data.len() {
         0 => 0,
         1 => {
@@ -322,7 +322,7 @@ fn high_bits_to_u64(v: &BigUint) -> u64 {
     }
 }
 
-impl ToPrimitive for BigUint {
+impl<const N: usize> ToPrimitive for BigUint<N> {
     #[inline]
     fn to_i64(&self) -> Option<i64> {
         self.to_u64().as_ref().and_then(u64::to_i64)
@@ -430,9 +430,9 @@ impl_try_from_biguint!(i64, ToPrimitive::to_i64);
 impl_try_from_biguint!(isize, ToPrimitive::to_isize);
 impl_try_from_biguint!(i128, ToPrimitive::to_i128);
 
-impl FromPrimitive for BigUint {
+impl<const N: usize> FromPrimitive for BigUint<N> {
     #[inline]
-    fn from_i64(n: i64) -> Option<BigUint> {
+    fn from_i64(n: i64) -> Option<BigUint<N>> {
         if n >= 0 {
             Some(BigUint::from(n as u64))
         } else {
@@ -441,7 +441,7 @@ impl FromPrimitive for BigUint {
     }
 
     #[inline]
-    fn from_i128(n: i128) -> Option<BigUint> {
+    fn from_i128(n: i128) -> Option<BigUint<N>> {
         if n >= 0 {
             Some(BigUint::from(n as u128))
         } else {
@@ -450,17 +450,17 @@ impl FromPrimitive for BigUint {
     }
 
     #[inline]
-    fn from_u64(n: u64) -> Option<BigUint> {
+    fn from_u64(n: u64) -> Option<BigUint<N>> {
         Some(BigUint::from(n))
     }
 
     #[inline]
-    fn from_u128(n: u128) -> Option<BigUint> {
+    fn from_u128(n: u128) -> Option<BigUint<N>> {
         Some(BigUint::from(n))
     }
 
     #[inline]
-    fn from_f64(mut n: f64) -> Option<BigUint> {
+    fn from_f64(mut n: f64) -> Option<BigUint<N>> {
         // handle NAN, INFINITY, NEG_INFINITY
         if !n.is_finite() {
             return None;
@@ -490,10 +490,10 @@ impl FromPrimitive for BigUint {
     }
 }
 
-impl From<u64> for BigUint {
+impl<const N: usize> From<u64> for BigUint<N> {
     #[inline]
     fn from(mut n: u64) -> Self {
-        let mut ret: BigUint = Self::zero();
+        let mut ret: BigUint<N> = Self::zero();
 
         while n != 0 {
             ret.data.push(n as BigDigit);
@@ -505,10 +505,10 @@ impl From<u64> for BigUint {
     }
 }
 
-impl From<u128> for BigUint {
+impl<const N: usize> From<u128> for BigUint<N> {
     #[inline]
     fn from(mut n: u128) -> Self {
-        let mut ret: BigUint = Self::zero();
+        let mut ret: BigUint<N> = Self::zero();
 
         while n != 0 {
             ret.data.push(n as BigDigit);
@@ -521,7 +521,7 @@ impl From<u128> for BigUint {
 
 macro_rules! impl_biguint_from_uint {
     ($T:ty) => {
-        impl From<$T> for BigUint {
+        impl<const N: usize> From<$T> for BigUint<N> {
             #[inline]
             fn from(n: $T) -> Self {
                 BigUint::from(n as u64)
@@ -537,11 +537,11 @@ impl_biguint_from_uint!(usize);
 
 macro_rules! impl_biguint_try_from_int {
     ($T:ty, $from_ty:path) => {
-        impl TryFrom<$T> for BigUint {
+        impl<const N: usize> TryFrom<$T> for BigUint<N> {
             type Error = TryFromBigIntError<()>;
 
             #[inline]
-            fn try_from(value: $T) -> Result<BigUint, TryFromBigIntError<()>> {
+            fn try_from(value: $T) -> Result<BigUint<N>, TryFromBigIntError<()>> {
                 $from_ty(value).ok_or(TryFromBigIntError::new(()))
             }
         }
@@ -590,7 +590,7 @@ impl_to_biguint!(u128, FromPrimitive::from_u128);
 impl_to_biguint!(f32, FromPrimitive::from_f32);
 impl_to_biguint!(f64, FromPrimitive::from_f64);
 
-impl From<bool> for BigUint {
+impl<const N: usize> From<bool> for BigUint<N> {
     fn from(x: bool) -> Self {
         if x {
             One::one()
@@ -601,7 +601,7 @@ impl From<bool> for BigUint {
 }
 
 // Extract bitwise digits that evenly divide BigDigit
-pub(super) fn to_bitwise_digits_le(u: &BigUint, bits: u8) -> Vec<u8> {
+pub(super) fn to_bitwise_digits_le<const N: usize>(u: &BigUint<N>, bits: u8) -> Vec<u8> {
     debug_assert!(!u.is_zero() && bits <= 8 && big_digit::BITS % bits == 0);
 
     let last_i = u.data.len() - 1;
@@ -629,7 +629,7 @@ pub(super) fn to_bitwise_digits_le(u: &BigUint, bits: u8) -> Vec<u8> {
 }
 
 // Extract bitwise digits that don't evenly divide BigDigit
-fn to_inexact_bitwise_digits_le(u: &BigUint, bits: u8) -> Vec<u8> {
+fn to_inexact_bitwise_digits_le<const N: usize>(u: &BigUint<N>, bits: u8) -> Vec<u8> {
     debug_assert!(!u.is_zero() && bits <= 8 && big_digit::BITS % bits != 0);
 
     let mask: BigDigit = (1 << bits) - 1;
@@ -671,7 +671,7 @@ fn to_inexact_bitwise_digits_le(u: &BigUint, bits: u8) -> Vec<u8> {
 
 // Extract little-endian radix digits
 #[inline(always)] // forced inline to get const-prop for radix=10
-pub(super) fn to_radix_digits_le(u: &BigUint, radix: u32) -> Vec<u8> {
+pub(super) fn to_radix_digits_le<const N: usize>(u: &BigUint<N>, radix: u32) -> Vec<u8> {
     debug_assert!(!u.is_zero() && !radix.is_power_of_two());
 
     #[cfg(feature = "std")]
@@ -750,7 +750,7 @@ pub(super) fn to_radix_digits_le(u: &BigUint, radix: u32) -> Vec<u8> {
     res
 }
 
-pub(super) fn to_radix_le(u: &BigUint, radix: u32) -> Vec<u8> {
+pub(super) fn to_radix_le<const N: usize>(u: &BigUint<N>, radix: u32) -> Vec<u8> {
     if u.is_zero() {
         vec![0]
     } else if radix.is_power_of_two() {
@@ -770,7 +770,7 @@ pub(super) fn to_radix_le(u: &BigUint, radix: u32) -> Vec<u8> {
     }
 }
 
-pub(crate) fn to_str_radix_reversed(u: &BigUint, radix: u32) -> Vec<u8> {
+pub(crate) fn to_str_radix_reversed<const N: usize>(u: &BigUint<N>, radix: u32) -> Vec<u8> {
     assert!(2 <= radix && radix <= 36, "The radix must be within 2...36");
 
     if u.is_zero() {

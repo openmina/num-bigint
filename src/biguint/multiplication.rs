@@ -1,6 +1,6 @@
 use super::addition::{__add2, add2};
 use super::subtraction::sub2;
-use super::{biguint_from_tinyvec, cmp_slice, BigUint, IntDigits};
+use super::{biguint_from_tinyvec, cmp_slice, BigUint};
 
 use crate::big_digit::{self, BigDigit, DoubleBigDigit};
 use crate::Sign::{self, Minus, NoSign, Plus};
@@ -10,7 +10,7 @@ use core::cmp::Ordering;
 use core::iter::Product;
 use core::ops::{Mul, MulAssign};
 use num_traits::{CheckedMul, FromPrimitive, One, Zero};
-use tinyvec::{tiny_vec, TinyVec};
+use tinyvec::TinyVec;
 
 #[inline]
 pub(super) fn mac_with_carry(
@@ -65,7 +65,7 @@ fn bigint_from_slice(slice: &[BigDigit]) -> BigInt {
 /// Three argument multiply accumulate:
 /// acc += b * c
 #[allow(clippy::many_single_char_names)]
-fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
+fn mac3<const N: usize>(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
     // Least-significant zeros have no effect on the output.
     if let Some(&0) = b.first() {
         if let Some(nz) = b.iter().position(|&d| d != 0) {
@@ -161,8 +161,8 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
         let (low2, high2) = y.split_at(m2);
 
         // (x * high2) * NBASE ^ m2 + z0
-        mac3(acc, x, low2);
-        mac3(&mut acc[m2..], x, high2);
+        mac3::<N>(acc, x, low2);
+        mac3::<N>(&mut acc[m2..], x, high2);
     } else if x.len() <= 256 {
         // Karatsuba multiplication:
         //
@@ -234,10 +234,12 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
         // We reuse the same BigUint for all the intermediate multiplies and have to size p
         // appropriately here: x1.len() >= x0.len and y1.len() >= y0.len():
         let len = x1.len() + y1.len() + 1;
-        let mut p = BigUint { data: core::iter::repeat(0).take(len).collect() };
+        let mut p = BigUint::<N> {
+            data: core::iter::repeat(0).take(len).collect(),
+        };
 
         // p2 = x1 * y1
-        mac3(&mut p.data, x1, y1);
+        mac3::<N>(&mut p.data, x1, y1);
 
         // Not required, but the adds go faster if we drop any unneeded 0s from the end:
         p.normalize();
@@ -250,7 +252,7 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
         p.data.resize(len, 0);
 
         // p0 = x0 * y0
-        mac3(&mut p.data, x0, y0);
+        mac3::<N>(&mut p.data, x0, y0);
         p.normalize();
 
         add2(acc, &p.data);
@@ -258,21 +260,21 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
 
         // p1 = (x1 - x0) * (y1 - y0)
         // We do this one last, since it may be negative and acc can't ever be negative:
-        let (j0_sign, j0) = sub_sign(x1, x0);
-        let (j1_sign, j1) = sub_sign(y1, y0);
+        let (j0_sign, j0) = sub_sign::<N>(x1, x0);
+        let (j1_sign, j1) = sub_sign::<N>(y1, y0);
 
         match j0_sign * j1_sign {
             Plus => {
                 p.data.truncate(0);
                 p.data.resize(len, 0);
 
-                mac3(&mut p.data, &j0.data, &j1.data);
+                mac3::<N>(&mut p.data, &j0.data, &j1.data);
                 p.normalize();
 
                 sub2(&mut acc[b..], &p.data);
             }
             Minus => {
-                mac3(&mut acc[b..], &j0.data, &j1.data);
+                mac3::<N>(&mut acc[b..], &j0.data, &j1.data);
             }
             NoSign => (),
         }
@@ -408,15 +410,17 @@ fn mac3(mut acc: &mut [BigDigit], mut b: &[BigDigit], mut c: &[BigDigit]) {
     }
 }
 
-fn mul3(x: &[BigDigit], y: &[BigDigit]) -> BigUint {
+fn mul3<const N: usize>(x: &[BigDigit], y: &[BigDigit]) -> BigUint<N> {
     let len = x.len() + y.len() + 1;
-    let mut prod = BigUint { data: core::iter::repeat(0).take(len).collect() };
+    let mut prod = BigUint {
+        data: core::iter::repeat(0).take(len).collect(),
+    };
 
-    mac3(&mut prod.data, x, y);
+    mac3::<N>(&mut prod.data, x, y);
     prod.normalized()
 }
 
-fn scalar_mul(a: &mut BigUint, b: BigDigit) {
+fn scalar_mul<const N: usize>(a: &mut BigUint<N>, b: BigDigit) {
     match b {
         0 => a.set_zero(),
         1 => {}
@@ -436,7 +440,7 @@ fn scalar_mul(a: &mut BigUint, b: BigDigit) {
     }
 }
 
-fn sub_sign(mut a: &[BigDigit], mut b: &[BigDigit]) -> (Sign, BigUint) {
+fn sub_sign<const N: usize>(mut a: &[BigDigit], mut b: &[BigDigit]) -> (Sign, BigUint<N>) {
     // Normalize:
     if let Some(&0) = a.last() {
         a = &a[..a.iter().rposition(|&x| x != 0).map_or(0, |i| i + 1)];
@@ -460,89 +464,112 @@ fn sub_sign(mut a: &[BigDigit], mut b: &[BigDigit]) -> (Sign, BigUint) {
     }
 }
 
-macro_rules! impl_mul {
-    ($(impl Mul<$Other:ty> for $Self:ty;)*) => {$(
-        impl Mul<$Other> for $Self {
-            type Output = BigUint;
-
-            #[inline]
-            fn mul(self, other: $Other) -> BigUint {
-                match (&*self.data, &*other.data) {
-                    // multiply by zero
-                    (&[], _) | (_, &[]) => BigUint::zero(),
-                    // multiply by a scalar
-                    (_, &[digit]) => self * digit,
-                    (&[digit], _) => other * digit,
-                    // full multiplication
-                    (x, y) => mul3(x, y),
-                }
-            }
+impl<const N: usize> Mul<BigUint<N>> for BigUint<N> {
+    type Output = BigUint<N>;
+    #[inline]
+    fn mul(self, other: BigUint<N>) -> BigUint<N> {
+        match (&*self.data, &*other.data) {
+            (&[], _) | (_, &[]) => BigUint::zero(),
+            (_, &[digit]) => self * digit,
+            (&[digit], _) => other * digit,
+            (x, y) => mul3(x, y),
         }
-    )*}
+    }
 }
-impl_mul! {
-    impl Mul<BigUint> for BigUint;
-    impl Mul<BigUint> for &BigUint;
-    impl Mul<&BigUint> for BigUint;
-    impl Mul<&BigUint> for &BigUint;
-}
-
-macro_rules! impl_mul_assign {
-    ($(impl MulAssign<$Other:ty> for BigUint;)*) => {$(
-        impl MulAssign<$Other> for BigUint {
-            #[inline]
-            fn mul_assign(&mut self, other: $Other) {
-                match (&*self.data, &*other.data) {
-                    // multiply by zero
-                    (&[], _) => {},
-                    (_, &[]) => self.set_zero(),
-                    // multiply by a scalar
-                    (_, &[digit]) => *self *= digit,
-                    (&[digit], _) => *self = other * digit,
-                    // full multiplication
-                    (x, y) => *self = mul3(x, y),
-                }
-            }
+impl<const N: usize> Mul<BigUint<N>> for &BigUint<N> {
+    type Output = BigUint<N>;
+    #[inline]
+    fn mul(self, other: BigUint<N>) -> BigUint<N> {
+        match (&*self.data, &*other.data) {
+            (&[], _) | (_, &[]) => BigUint::zero(),
+            (_, &[digit]) => self * digit,
+            (&[digit], _) => other * digit,
+            (x, y) => mul3(x, y),
         }
-    )*}
+    }
 }
-impl_mul_assign! {
-    impl MulAssign<BigUint> for BigUint;
-    impl MulAssign<&BigUint> for BigUint;
+impl<const N: usize> Mul<&BigUint<N>> for BigUint<N> {
+    type Output = BigUint<N>;
+    #[inline]
+    fn mul(self, other: &BigUint<N>) -> BigUint<N> {
+        match (&*self.data, &*other.data) {
+            (&[], _) | (_, &[]) => BigUint::zero(),
+            (_, &[digit]) => self * digit,
+            (&[digit], _) => other * digit,
+            (x, y) => mul3(x, y),
+        }
+    }
+}
+impl<const N: usize> Mul<&BigUint<N>> for &BigUint<N> {
+    type Output = BigUint<N>;
+    #[inline]
+    fn mul(self, other: &BigUint<N>) -> BigUint<N> {
+        match (&*self.data, &*other.data) {
+            (&[], _) | (_, &[]) => BigUint::zero(),
+            (_, &[digit]) => self * digit,
+            (&[digit], _) => other * digit,
+            (x, y) => mul3(x, y),
+        }
+    }
 }
 
-promote_unsigned_scalars!(impl Mul for BigUint, mul);
-promote_unsigned_scalars_assign!(impl MulAssign for BigUint, mul_assign);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u32> for BigUint, mul);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u64> for BigUint, mul);
-forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u128> for BigUint, mul);
+impl<const N: usize> MulAssign<BigUint<N>> for BigUint<N> {
+    #[inline]
+    fn mul_assign(&mut self, other: BigUint<N>) {
+        match (&*self.data, &*other.data) {
+            (&[], _) => {}
+            (_, &[]) => self.set_zero(),
+            (_, &[digit]) => *self *= digit,
+            (&[digit], _) => *self = other * digit,
+            (x, y) => *self = mul3(x, y),
+        }
+    }
+}
+impl<const N: usize> MulAssign<&BigUint<N>> for BigUint<N> {
+    #[inline]
+    fn mul_assign(&mut self, other: &BigUint<N>) {
+        match (&*self.data, &*other.data) {
+            (&[], _) => {}
+            (_, &[]) => self.set_zero(),
+            (_, &[digit]) => *self *= digit,
+            (&[digit], _) => *self = other * digit,
+            (x, y) => *self = mul3(x, y),
+        }
+    }
+}
 
-impl Mul<u32> for BigUint {
-    type Output = BigUint;
+promote_unsigned_scalars!(impl Mul for BigUint<N>, mul);
+promote_unsigned_scalars_assign!(impl MulAssign for BigUint<N>, mul_assign);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u32> for BigUint<N>, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u64> for BigUint<N>, mul);
+forward_all_scalar_binop_to_val_val_commutative!(impl Mul<u128> for BigUint<N>, mul);
+
+impl<const N: usize> Mul<u32> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn mul(mut self, other: u32) -> BigUint {
+    fn mul(mut self, other: u32) -> BigUint<N> {
         self *= other;
         self
     }
 }
-impl MulAssign<u32> for BigUint {
+impl<const N: usize> MulAssign<u32> for BigUint<N> {
     #[inline]
     fn mul_assign(&mut self, other: u32) {
         scalar_mul(self, other as BigDigit);
     }
 }
 
-impl Mul<u64> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Mul<u64> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn mul(mut self, other: u64) -> BigUint {
+    fn mul(mut self, other: u64) -> BigUint<N> {
         self *= other;
         self
     }
 }
-impl MulAssign<u64> for BigUint {
+impl<const N: usize> MulAssign<u64> for BigUint<N> {
     cfg_digit!(
         #[inline]
         fn mul_assign(&mut self, other: u64) {
@@ -561,17 +588,17 @@ impl MulAssign<u64> for BigUint {
     );
 }
 
-impl Mul<u128> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Mul<u128> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn mul(mut self, other: u128) -> BigUint {
+    fn mul(mut self, other: u128) -> BigUint<N> {
         self *= other;
         self
     }
 }
 
-impl MulAssign<u128> for BigUint {
+impl<const N: usize> MulAssign<u128> for BigUint<N> {
     cfg_digit!(
         #[inline]
         fn mul_assign(&mut self, other: u128) {
@@ -598,9 +625,9 @@ impl MulAssign<u128> for BigUint {
     );
 }
 
-impl CheckedMul for BigUint {
+impl<const N: usize> CheckedMul for BigUint<N> {
     #[inline]
-    fn checked_mul(&self, v: &BigUint) -> Option<BigUint> {
+    fn checked_mul(&self, v: &BigUint<N>) -> Option<BigUint<N>> {
         Some(self.mul(v))
     }
 }
