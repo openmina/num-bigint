@@ -1,4 +1,4 @@
-use super::{BigUint, IntDigits};
+use super::BigUint;
 
 use crate::big_digit::{self, BigDigit};
 use crate::UsizePromotion;
@@ -85,20 +85,20 @@ pub(super) fn add2(a: &mut [BigDigit], b: &[BigDigit]) {
     debug_assert!(carry == 0);
 }
 
-forward_all_binop_to_val_ref_commutative!(impl Add for BigUint, add);
-forward_val_assign!(impl AddAssign for BigUint, add_assign);
+forward_all_binop_to_val_ref_commutative!(impl Add for BigUint<N>, add);
+forward_val_assign!(impl AddAssign for BigUint<N>, add_assign);
 
-impl Add<&BigUint> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Add<&BigUint<N>> for BigUint<N> {
+    type Output = BigUint<N>;
 
-    fn add(mut self, other: &BigUint) -> BigUint {
+    fn add(mut self, other: &BigUint<N>) -> BigUint<N> {
         self += other;
         self
     }
 }
-impl AddAssign<&BigUint> for BigUint {
+impl<const N: usize> AddAssign<&BigUint<N>> for BigUint<N> {
     #[inline]
-    fn add_assign(&mut self, other: &BigUint) {
+    fn add_assign(&mut self, other: &BigUint<N>) {
         let self_len = self.data.len();
         let carry = if self_len < other.data.len() {
             let lo_carry = __add2(&mut self.data[..], &other.data[..self_len]);
@@ -113,23 +113,23 @@ impl AddAssign<&BigUint> for BigUint {
     }
 }
 
-promote_unsigned_scalars!(impl Add for BigUint, add);
-promote_unsigned_scalars_assign!(impl AddAssign for BigUint, add_assign);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<u32> for BigUint, add);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<u64> for BigUint, add);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<u128> for BigUint, add);
+promote_unsigned_scalars!(impl Add for BigUint<N>, add);
+promote_unsigned_scalars_assign!(impl AddAssign for BigUint<N>, add_assign);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<u32> for BigUint<N>, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<u64> for BigUint<N>, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<u128> for BigUint<N>, add);
 
-impl Add<u32> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Add<u32> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn add(mut self, other: u32) -> BigUint {
+    fn add(mut self, other: u32) -> BigUint<N> {
         self += other;
         self
     }
 }
 
-impl AddAssign<u32> for BigUint {
+impl<const N: usize> AddAssign<u32> for BigUint<N> {
     #[inline]
     fn add_assign(&mut self, other: u32) {
         if other != 0 {
@@ -145,17 +145,17 @@ impl AddAssign<u32> for BigUint {
     }
 }
 
-impl Add<u64> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Add<u64> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn add(mut self, other: u64) -> BigUint {
+    fn add(mut self, other: u64) -> BigUint<N> {
         self += other;
         self
     }
 }
 
-impl AddAssign<u64> for BigUint {
+impl<const N: usize> AddAssign<u64> for BigUint<N> {
     cfg_digit!(
         #[inline]
         fn add_assign(&mut self, other: u64) {
@@ -190,17 +190,17 @@ impl AddAssign<u64> for BigUint {
     );
 }
 
-impl Add<u128> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Add<u128> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn add(mut self, other: u128) -> BigUint {
+    fn add(mut self, other: u128) -> BigUint<N> {
         self += other;
         self
     }
 }
 
-impl AddAssign<u128> for BigUint {
+impl<const N: usize> AddAssign<u128> for BigUint<N> {
     cfg_digit!(
         #[inline]
         fn add_assign(&mut self, other: u128) {
@@ -246,9 +246,9 @@ impl AddAssign<u128> for BigUint {
     );
 }
 
-impl CheckedAdd for BigUint {
+impl<const N: usize> CheckedAdd for BigUint<N> {
     #[inline]
-    fn checked_add(&self, v: &BigUint) -> Option<BigUint> {
+    fn checked_add(&self, v: &BigUint<N>) -> Option<BigUint<N>> {
         Some(self.add(v))
     }
 }

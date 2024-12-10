@@ -30,11 +30,11 @@ macro_rules! bigint_add {
     };
 }
 
-impl Add<&BigInt> for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: &BigInt) -> BigInt {
+    fn add(self, other: &BigInt<N>) -> BigInt<N> {
         bigint_add!(
             self,
             self.clone(),
@@ -46,66 +46,71 @@ impl Add<&BigInt> for &BigInt {
     }
 }
 
-impl Add<BigInt> for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: BigInt) -> BigInt {
+    fn add(self, other: BigInt<N>) -> BigInt<N> {
         bigint_add!(self, self.clone(), &self.data, other, other, other.data)
     }
 }
 
-impl Add<&BigInt> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: &BigInt) -> BigInt {
+    fn add(self, other: &BigInt<N>) -> BigInt<N> {
         bigint_add!(self, self, self.data, other, other.clone(), &other.data)
     }
 }
 
-impl Add<BigInt> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: BigInt) -> BigInt {
+    fn add(self, other: BigInt<N>) -> BigInt<N> {
         bigint_add!(self, self, self.data, other, other, other.data)
     }
 }
 
-impl AddAssign<&BigInt> for BigInt {
+impl<const N: usize> AddAssign<&BigInt<N>> for BigInt<N> {
     #[inline]
-    fn add_assign(&mut self, other: &BigInt) {
+    fn add_assign(&mut self, other: &BigInt<N>) {
         let n = mem::replace(self, Self::zero());
         *self = n + other;
     }
 }
-forward_val_assign!(impl AddAssign for BigInt, add_assign);
+impl<const N: usize> AddAssign<BigInt<N>> for BigInt<N> {
+    #[inline]
+    fn add_assign(&mut self, other: BigInt<N>) {
+        self.add_assign(&other);
+    }
+}
 
-promote_all_scalars!(impl Add for BigInt, add);
-promote_all_scalars_assign!(impl AddAssign for BigInt, add_assign);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<u32> for BigInt, add);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<u64> for BigInt, add);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<u128> for BigInt, add);
+promote_all_scalars!(impl Add for BigInt<N>, add);
+promote_all_scalars_assign!(impl AddAssign for BigInt<N>, add_assign);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<u32> for BigInt<N>, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<u64> for BigInt<N>, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<u128> for BigInt<N>, add);
 
-impl Add<u32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<u32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: u32) -> BigInt {
+    fn add(self, other: u32) -> BigInt<N> {
         match self.sign {
             NoSign => From::from(other),
-            Plus => BigInt::from(self.data + other),
+            Plus => BigInt::<N>::from(self.data + other),
             Minus => match self.data.cmp(&From::from(other)) {
                 Equal => Self::zero(),
-                Less => BigInt::from(other - self.data),
-                Greater => -BigInt::from(self.data - other),
+                Less => BigInt::<N>::from(other - self.data),
+                Greater => -BigInt::<N>::from(self.data - other),
             },
         }
     }
 }
 
-impl AddAssign<u32> for BigInt {
+impl<const N: usize> AddAssign<u32> for BigInt<N> {
     #[inline]
     fn add_assign(&mut self, other: u32) {
         let n = mem::replace(self, Self::zero());
@@ -113,24 +118,24 @@ impl AddAssign<u32> for BigInt {
     }
 }
 
-impl Add<u64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<u64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: u64) -> BigInt {
+    fn add(self, other: u64) -> BigInt<N> {
         match self.sign {
             NoSign => From::from(other),
-            Plus => BigInt::from(self.data + other),
+            Plus => BigInt::<N>::from(self.data + other),
             Minus => match self.data.cmp(&From::from(other)) {
                 Equal => Self::zero(),
-                Less => BigInt::from(other - self.data),
-                Greater => -BigInt::from(self.data - other),
+                Less => BigInt::<N>::from(other - self.data),
+                Greater => -BigInt::<N>::from(self.data - other),
             },
         }
     }
 }
 
-impl AddAssign<u64> for BigInt {
+impl<const N: usize> AddAssign<u64> for BigInt<N> {
     #[inline]
     fn add_assign(&mut self, other: u64) {
         let n = mem::replace(self, Self::zero());
@@ -138,23 +143,23 @@ impl AddAssign<u64> for BigInt {
     }
 }
 
-impl Add<u128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<u128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: u128) -> BigInt {
+    fn add(self, other: u128) -> BigInt<N> {
         match self.sign {
-            NoSign => BigInt::from(other),
-            Plus => BigInt::from(self.data + other),
+            NoSign => BigInt::<N>::from(other),
+            Plus => BigInt::<N>::from(self.data + other),
             Minus => match self.data.cmp(&From::from(other)) {
                 Equal => Self::zero(),
-                Less => BigInt::from(other - self.data),
-                Greater => -BigInt::from(self.data - other),
+                Less => BigInt::<N>::from(other - self.data),
+                Greater => -BigInt::<N>::from(self.data - other),
             },
         }
     }
 }
-impl AddAssign<u128> for BigInt {
+impl<const N: usize> AddAssign<u128> for BigInt<N> {
     #[inline]
     fn add_assign(&mut self, other: u128) {
         let n = mem::replace(self, Self::zero());
@@ -162,22 +167,22 @@ impl AddAssign<u128> for BigInt {
     }
 }
 
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<i32> for BigInt, add);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<i64> for BigInt, add);
-forward_all_scalar_binop_to_val_val_commutative!(impl Add<i128> for BigInt, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<i32> for BigInt<N>, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<i64> for BigInt<N>, add);
+forward_all_scalar_binop_to_val_val_commutative!(impl Add<i128> for BigInt<N>, add);
 
-impl Add<i32> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<i32> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: i32) -> BigInt {
+    fn add(self, other: i32) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self + u,
             Negative(u) => self - u,
         }
     }
 }
-impl AddAssign<i32> for BigInt {
+impl<const N: usize> AddAssign<i32> for BigInt<N> {
     #[inline]
     fn add_assign(&mut self, other: i32) {
         match other.checked_uabs() {
@@ -187,18 +192,18 @@ impl AddAssign<i32> for BigInt {
     }
 }
 
-impl Add<i64> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<i64> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: i64) -> BigInt {
+    fn add(self, other: i64) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self + u,
             Negative(u) => self - u,
         }
     }
 }
-impl AddAssign<i64> for BigInt {
+impl<const N: usize> AddAssign<i64> for BigInt<N> {
     #[inline]
     fn add_assign(&mut self, other: i64) {
         match other.checked_uabs() {
@@ -208,18 +213,18 @@ impl AddAssign<i64> for BigInt {
     }
 }
 
-impl Add<i128> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Add<i128> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn add(self, other: i128) -> BigInt {
+    fn add(self, other: i128) -> BigInt<N> {
         match other.checked_uabs() {
             Positive(u) => self + u,
             Negative(u) => self - u,
         }
     }
 }
-impl AddAssign<i128> for BigInt {
+impl<const N: usize> AddAssign<i128> for BigInt<N> {
     #[inline]
     fn add_assign(&mut self, other: i128) {
         match other.checked_uabs() {
@@ -229,9 +234,9 @@ impl AddAssign<i128> for BigInt {
     }
 }
 
-impl CheckedAdd for BigInt {
+impl<const N: usize> CheckedAdd for BigInt<N> {
     #[inline]
-    fn checked_add(&self, v: &BigInt) -> Option<BigInt> {
+    fn checked_add(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         Some(self.add(v))
     }
 }
