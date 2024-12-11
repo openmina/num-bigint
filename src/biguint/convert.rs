@@ -555,9 +555,9 @@ impl_biguint_try_from_int!(i64, FromPrimitive::from_i64);
 impl_biguint_try_from_int!(isize, FromPrimitive::from_isize);
 impl_biguint_try_from_int!(i128, FromPrimitive::from_i128);
 
-impl ToBigUint for BigUint {
+impl ToBigUint for BigUint<32> {
     #[inline]
-    fn to_biguint(&self) -> Option<BigUint> {
+    fn to_biguint(&self) -> Option<BigUint<32>> {
         Some(self.clone())
     }
 }
@@ -566,7 +566,7 @@ macro_rules! impl_to_biguint {
     ($T:ty, $from_ty:path) => {
         impl ToBigUint for $T {
             #[inline]
-            fn to_biguint(&self) -> Option<BigUint> {
+            fn to_biguint(&self) -> Option<BigUint<32>> {
                 $from_ty(*self)
             }
         }

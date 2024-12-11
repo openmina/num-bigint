@@ -276,15 +276,15 @@ impl<const N: usize> From<BigUint<N>> for BigInt<N> {
     }
 }
 
-impl ToBigInt for BigInt {
+impl ToBigInt for BigInt<32> {
     #[inline]
-    fn to_bigint(&self) -> Option<BigInt> {
+    fn to_bigint(&self) -> Option<BigInt<32>> {
         Some(self.clone())
     }
 }
-impl ToBigInt for BigUint {
+impl ToBigInt for BigUint<32> {
     #[inline]
-    fn to_bigint(&self) -> Option<BigInt> {
+    fn to_bigint(&self) -> Option<BigInt<32>> {
         if self.is_zero() {
             Some(BigInt::zero())
         } else {
@@ -295,9 +295,9 @@ impl ToBigInt for BigUint {
         }
     }
 }
-impl ToBigUint for BigInt {
+impl ToBigUint for BigInt<32> {
     #[inline]
-    fn to_biguint(&self) -> Option<BigUint> {
+    fn to_biguint(&self) -> Option<BigUint<32>> {
         match self.sign() {
             Plus => Some(self.data.clone()),
             NoSign => Some(BigUint::zero()),
@@ -366,7 +366,7 @@ macro_rules! impl_to_bigint {
     ($T:ty, $from_ty:path) => {
         impl ToBigInt for $T {
             #[inline]
-            fn to_bigint(&self) -> Option<BigInt> {
+            fn to_bigint(&self) -> Option<BigInt<32>> {
                 $from_ty(*self)
             }
         }

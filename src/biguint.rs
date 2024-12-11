@@ -529,7 +529,7 @@ impl<const N: usize> Roots for BigUint<N> {
 /// A generic trait for converting a value to a [`BigUint`].
 pub trait ToBigUint {
     /// Converts the value of `self` to a [`BigUint`].
-    fn to_biguint(&self) -> Option<BigUint>;
+    fn to_biguint(&self) -> Option<BigUint<32>>;
 }
 
 /// Creates and initializes a [`BigUint`].

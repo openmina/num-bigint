@@ -572,7 +572,7 @@ impl<const N: usize> BigInt<N> {
 /// when converting from any integer or unsigned primitive, or [`BigUint`].
 pub trait ToBigInt {
     /// Converts the value of `self` to a [`BigInt`].
-    fn to_bigint(&self) -> Option<BigInt>;
+    fn to_bigint(&self) -> Option<BigInt<32>>;
 }
 
 impl<const N: usize> BigInt<N> {
