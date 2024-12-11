@@ -219,14 +219,6 @@ pub(super) fn div_rem_ref<const N: usize>(
         return (BigUint::zero(), BigUint::zero());
     }
 
-    // if
-    assert!(
-        u.data.is_inline(),
-        "u.data.len={:?} u={:?}",
-        u.data.len(),
-        u
-    );
-
     if d.data.len() == 1 {
         if *d.data == [1] {
             return (u.clone(), BigUint::zero());
