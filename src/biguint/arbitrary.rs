@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 #[cfg(feature = "quickcheck")]
 #[cfg_attr(docsrs, doc(cfg(feature = "quickcheck")))]
-impl quickcheck::Arbitrary for BigUint {
+impl<const N: usize> quickcheck::Arbitrary for BigUint<N> {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         // Use arbitrary from Vec
         biguint_from_vec(Vec::<BigDigit>::arbitrary(g))
@@ -23,7 +23,7 @@ impl quickcheck::Arbitrary for BigUint {
 
 #[cfg(feature = "arbitrary")]
 #[cfg_attr(docsrs, doc(cfg(feature = "arbitrary")))]
-impl arbitrary::Arbitrary<'_> for BigUint {
+impl<const N: usize> arbitrary::Arbitrary<'_> for BigUint<N> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
         Ok(biguint_from_vec(Vec::<BigDigit>::arbitrary(u)?))
     }

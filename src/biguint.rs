@@ -9,9 +9,11 @@ use core::fmt;
 use core::hash;
 use core::mem;
 use core::str;
+use tinyvec::tiny_vec;
+use tinyvec::TinyVec;
 
 use num_integer::{Integer, Roots};
-use num_traits::{ConstZero, Num, One, Pow, ToPrimitive, Unsigned, Zero};
+use num_traits::{Num, One, Pow, ToPrimitive, Unsigned, Zero};
 
 mod addition;
 mod division;
@@ -30,14 +32,25 @@ mod shift;
 pub(crate) use self::convert::to_str_radix_reversed;
 pub use self::iter::{U32Digits, U64Digits};
 
+/// 4 limbs by default (256 bits)
+pub const NLIMBS: usize = 4;
+
 /// A big unsigned integer type.
-pub struct BigUint {
-    data: Vec<BigDigit>,
+pub struct BigUint<const N: usize = NLIMBS> {
+    data: TinyVec<[u64; N]>,
+}
+
+impl<const A: usize> BigUint<A> {
+    pub fn to_nlimbs<const N2: usize>(&self) -> BigUint<N2> {
+        BigUint {
+            data: self.data.iter().copied().collect(),
+        }
+    }
 }
 
 // Note: derived `Clone` doesn't specialize `clone_from`,
 // but we want to keep the allocation in `data`.
-impl Clone for BigUint {
+impl<const N: usize> Clone for BigUint<N> {
     #[inline]
     fn clone(&self) -> Self {
         BigUint {
@@ -51,7 +64,7 @@ impl Clone for BigUint {
     }
 }
 
-impl hash::Hash for BigUint {
+impl<const N: usize> hash::Hash for BigUint<N> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         debug_assert!(self.data.last() != Some(&0));
@@ -59,26 +72,26 @@ impl hash::Hash for BigUint {
     }
 }
 
-impl PartialEq for BigUint {
+impl<const N: usize> PartialEq for BigUint<N> {
     #[inline]
-    fn eq(&self, other: &BigUint) -> bool {
+    fn eq(&self, other: &BigUint<N>) -> bool {
         debug_assert!(self.data.last() != Some(&0));
         debug_assert!(other.data.last() != Some(&0));
         self.data == other.data
     }
 }
-impl Eq for BigUint {}
+impl<const N: usize> Eq for BigUint<N> {}
 
-impl PartialOrd for BigUint {
+impl<const N: usize> PartialOrd for BigUint<N> {
     #[inline]
-    fn partial_cmp(&self, other: &BigUint) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &BigUint<N>) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for BigUint {
+impl<const N: usize> Ord for BigUint<N> {
     #[inline]
-    fn cmp(&self, other: &BigUint) -> Ordering {
+    fn cmp(&self, other: &BigUint<N>) -> Ordering {
         cmp_slice(&self.data[..], &other.data[..])
     }
 }
@@ -94,20 +107,20 @@ fn cmp_slice(a: &[BigDigit], b: &[BigDigit]) -> Ordering {
     }
 }
 
-impl Default for BigUint {
+impl<const N: usize> Default for BigUint<N> {
     #[inline]
-    fn default() -> BigUint {
-        Self::ZERO
+    fn default() -> BigUint<N> {
+        Self::zero()
     }
 }
 
-impl fmt::Debug for BigUint {
+impl<const N: usize> fmt::Debug for BigUint<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-impl fmt::Display for BigUint {
+impl<const N: usize> fmt::Display for BigUint<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad_integral(true, "", &self.to_str_radix(10))
     }
@@ -139,10 +152,10 @@ impl fmt::Octal for BigUint {
     }
 }
 
-impl Zero for BigUint {
+impl<const N: usize> Zero for BigUint<N> {
     #[inline]
-    fn zero() -> BigUint {
-        Self::ZERO
+    fn zero() -> BigUint<N> {
+        Self::zero()
     }
 
     #[inline]
@@ -156,15 +169,15 @@ impl Zero for BigUint {
     }
 }
 
-impl ConstZero for BigUint {
-    // forward to the inherent const
-    const ZERO: Self = Self::ZERO; // BigUint { data: Vec::new() };
-}
+// impl ConstZero for BigUint {
+//     // forward to the inherent const
+//     const ZERO: Self = Self::ZERO; // BigUint { data: Vec::new() };
+// }
 
-impl One for BigUint {
+impl<const N: usize> One for BigUint<N> {
     #[inline]
-    fn one() -> BigUint {
-        BigUint { data: vec![1] }
+    fn one() -> BigUint<N> {
+        BigUint { data: tiny_vec![1] }
     }
 
     #[inline]
@@ -179,33 +192,33 @@ impl One for BigUint {
     }
 }
 
-impl Unsigned for BigUint {}
+impl<const N: usize> Unsigned for BigUint<N> {}
 
-impl Integer for BigUint {
+impl<const N: usize> Integer for BigUint<N> {
     #[inline]
-    fn div_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
+    fn div_rem(&self, other: &BigUint<N>) -> (BigUint<N>, BigUint<N>) {
         division::div_rem_ref(self, other)
     }
 
     #[inline]
-    fn div_floor(&self, other: &BigUint) -> BigUint {
+    fn div_floor(&self, other: &BigUint<N>) -> BigUint<N> {
         let (d, _) = division::div_rem_ref(self, other);
         d
     }
 
     #[inline]
-    fn mod_floor(&self, other: &BigUint) -> BigUint {
+    fn mod_floor(&self, other: &BigUint<N>) -> BigUint<N> {
         let (_, m) = division::div_rem_ref(self, other);
         m
     }
 
     #[inline]
-    fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
+    fn div_mod_floor(&self, other: &BigUint<N>) -> (BigUint<N>, BigUint<N>) {
         division::div_rem_ref(self, other)
     }
 
     #[inline]
-    fn div_ceil(&self, other: &BigUint) -> BigUint {
+    fn div_ceil(&self, other: &BigUint<N>) -> BigUint<N> {
         let (d, m) = division::div_rem_ref(self, other);
         if m.is_zero() {
             d
@@ -220,7 +233,7 @@ impl Integer for BigUint {
     #[inline]
     fn gcd(&self, other: &Self) -> Self {
         #[inline]
-        fn twos(x: &BigUint) -> u64 {
+        fn twos<const N: usize>(x: &BigUint<N>) -> u64 {
             x.trailing_zeros().unwrap_or(0)
         }
 
@@ -254,9 +267,9 @@ impl Integer for BigUint {
 
     /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
     #[inline]
-    fn lcm(&self, other: &BigUint) -> BigUint {
+    fn lcm(&self, other: &BigUint<N>) -> BigUint<N> {
         if self.is_zero() && other.is_zero() {
-            Self::ZERO
+            Self::zero()
         } else {
             self / self.gcd(other) * other
         }
@@ -268,7 +281,7 @@ impl Integer for BigUint {
     fn gcd_lcm(&self, other: &Self) -> (Self, Self) {
         let gcd = self.gcd(other);
         let lcm = if gcd.is_zero() {
-            Self::ZERO
+            Self::zero()
         } else {
             self / &gcd * other
         };
@@ -277,13 +290,13 @@ impl Integer for BigUint {
 
     /// Deprecated, use `is_multiple_of` instead.
     #[inline]
-    fn divides(&self, other: &BigUint) -> bool {
+    fn divides(&self, other: &BigUint<N>) -> bool {
         self.is_multiple_of(other)
     }
 
     /// Returns `true` if the number is a multiple of `other`.
     #[inline]
-    fn is_multiple_of(&self, other: &BigUint) -> bool {
+    fn is_multiple_of(&self, other: &BigUint<N>) -> bool {
         if other.is_zero() {
             return self.is_zero();
         }
@@ -332,9 +345,9 @@ impl Integer for BigUint {
 }
 
 #[inline]
-fn fixpoint<F>(mut x: BigUint, max_bits: u64, f: F) -> BigUint
+fn fixpoint<F, const N: usize>(mut x: BigUint<N>, max_bits: u64, f: F) -> BigUint<N>
 where
-    F: Fn(&BigUint) -> BigUint,
+    F: Fn(&BigUint<N>) -> BigUint<N>,
 {
     let mut xn = f(&x);
 
@@ -360,7 +373,7 @@ where
     x
 }
 
-impl Roots for BigUint {
+impl<const N: usize> Roots for BigUint<N> {
     // nth_root, sqrt and cbrt use Newton's method to compute
     // principal root of a given degree for a given integer.
 
@@ -516,27 +529,38 @@ impl Roots for BigUint {
 /// A generic trait for converting a value to a [`BigUint`].
 pub trait ToBigUint {
     /// Converts the value of `self` to a [`BigUint`].
-    fn to_biguint(&self) -> Option<BigUint>;
+    fn to_biguint(&self) -> Option<BigUint<32>>;
 }
 
 /// Creates and initializes a [`BigUint`].
 ///
 /// The digits are in little-endian base matching `BigDigit`.
+// #[inline]
+// pub(crate) fn biguint_from_vec(digits: Vec<BigDigit>) -> BigUint {
+//     BigUint { data: digits.into_iter().collect() }.normalized()
+// }
+
 #[inline]
-pub(crate) fn biguint_from_vec(digits: Vec<BigDigit>) -> BigUint {
+pub(crate) fn biguint_from_tinyvec<const N: usize>(digits: TinyVec<[BigDigit; N]>) -> BigUint<N> {
     BigUint { data: digits }.normalized()
 }
 
-impl BigUint {
-    /// A constant `BigUint` with value 0, useful for static initialization.
-    pub const ZERO: Self = BigUint { data: Vec::new() };
+impl<const N: usize> BigUint<N> {
+    pub fn zero() -> Self {
+        BigUint {
+            data: [].into_iter().collect(),
+        }
+    }
+
+    // /// A constant `BigUint` with value 0, useful for static initialization.
+    // pub const ZERO: Self = BigUint { data: TinyVec::Inline(ArrayVec::from_array_empty([0; 8])) };
 
     /// Creates and initializes a [`BigUint`].
     ///
     /// The base 2<sup>32</sup> digits are ordered least significant digit first.
     #[inline]
-    pub fn new(digits: Vec<u32>) -> BigUint {
-        let mut big = Self::ZERO;
+    pub fn new(digits: Vec<u32>) -> BigUint<N> {
+        let mut big = Self::zero();
 
         cfg_digit_expr!(
             {
@@ -553,8 +577,8 @@ impl BigUint {
     ///
     /// The base 2<sup>32</sup> digits are ordered least significant digit first.
     #[inline]
-    pub fn from_slice(slice: &[u32]) -> BigUint {
-        let mut big = Self::ZERO;
+    pub fn from_slice(slice: &[u32]) -> BigUint<N> {
+        let mut big = Self::zero();
         big.assign_from_slice(slice);
         big
     }
@@ -593,9 +617,9 @@ impl BigUint {
     ///            BigUint::parse_bytes(b"22405534230753963835153736737", 10).unwrap());
     /// ```
     #[inline]
-    pub fn from_bytes_be(bytes: &[u8]) -> BigUint {
+    pub fn from_bytes_be(bytes: &[u8]) -> BigUint<N> {
         if bytes.is_empty() {
-            Self::ZERO
+            Self::zero()
         } else {
             let mut v = bytes.to_vec();
             v.reverse();
@@ -607,11 +631,11 @@ impl BigUint {
     ///
     /// The bytes are in little-endian byte order.
     #[inline]
-    pub fn from_bytes_le(bytes: &[u8]) -> BigUint {
+    pub fn from_bytes_le(bytes: &[u8]) -> BigUint<N> {
         if bytes.is_empty() {
-            Self::ZERO
+            Self::zero()
         } else {
-            convert::from_bitwise_digits_le(bytes, 8)
+            convert::from_bitwise_digits_le::<N>(bytes, 8)
         }
     }
 
@@ -632,7 +656,7 @@ impl BigUint {
     /// assert_eq!(BigUint::parse_bytes(b"G", 16), None);
     /// ```
     #[inline]
-    pub fn parse_bytes(buf: &[u8], radix: u32) -> Option<BigUint> {
+    pub fn parse_bytes(buf: &[u8], radix: u32) -> Option<BigUint<N>> {
         let s = str::from_utf8(buf).ok()?;
         BigUint::from_str_radix(s, radix).ok()
     }
@@ -653,7 +677,7 @@ impl BigUint {
     /// let a = BigUint::from_radix_be(inbase190, 190).unwrap();
     /// assert_eq!(a.to_radix_be(190), inbase190);
     /// ```
-    pub fn from_radix_be(buf: &[u8], radix: u32) -> Option<BigUint> {
+    pub fn from_radix_be(buf: &[u8], radix: u32) -> Option<BigUint<N>> {
         convert::from_radix_be(buf, radix)
     }
 
@@ -673,7 +697,7 @@ impl BigUint {
     /// let a = BigUint::from_radix_be(inbase190, 190).unwrap();
     /// assert_eq!(a.to_radix_be(190), inbase190);
     /// ```
-    pub fn from_radix_le(buf: &[u8], radix: u32) -> Option<BigUint> {
+    pub fn from_radix_le(buf: &[u8], radix: u32) -> Option<BigUint<N>> {
         convert::from_radix_le(buf, radix)
     }
 
@@ -858,7 +882,7 @@ impl BigUint {
     /// Strips off trailing zero bigdigits - comparisons require the last element in the vector to
     /// be nonzero.
     #[inline]
-    fn normalize(&mut self) {
+    pub(crate) fn normalize(&mut self) {
         if let Some(&0) = self.data.last() {
             let len = self.data.iter().rposition(|&d| d != 0).map_or(0, |i| i + 1);
             self.data.truncate(len);
@@ -870,7 +894,7 @@ impl BigUint {
 
     /// Returns a normalized [`BigUint`].
     #[inline]
-    fn normalized(mut self) -> BigUint {
+    fn normalized(mut self) -> BigUint<N> {
         self.normalize();
         self
     }
@@ -1068,33 +1092,36 @@ impl num_traits::ToBytes for BigUint {
     }
 }
 
-pub(crate) trait IntDigits {
-    fn digits(&self) -> &[BigDigit];
-    fn digits_mut(&mut self) -> &mut Vec<BigDigit>;
-    fn normalize(&mut self);
-    fn capacity(&self) -> usize;
-    fn len(&self) -> usize;
-}
+// pub(crate) trait IntDigits {
+//     fn digits(&self) -> &[BigDigit];
+//     fn digits_mut(&mut self) -> &mut TinyVec<[BigDigit; NLIMBS]>;
+//     fn normalize(&mut self);
+//     fn capacity(&self) -> usize;
+//     fn len(&self) -> usize;
+// }
 
-impl IntDigits for BigUint {
+// impl<const N: usize> IntDigits for BigUint<N> {
+impl<const N: usize> BigUint<N> {
+    // const N: usize = N;
+
     #[inline]
-    fn digits(&self) -> &[BigDigit] {
+    pub(crate) fn digits(&self) -> &[BigDigit] {
         &self.data
     }
     #[inline]
-    fn digits_mut(&mut self) -> &mut Vec<BigDigit> {
+    pub(crate) fn digits_mut(&mut self) -> &mut TinyVec<[BigDigit; N]> {
         &mut self.data
     }
+    // #[inline]
+    // pub(crate) fn normalize(&mut self) {
+    //     self.normalize();
+    // }
     #[inline]
-    fn normalize(&mut self) {
-        self.normalize();
-    }
-    #[inline]
-    fn capacity(&self) -> usize {
+    pub(crate) fn capacity(&self) -> usize {
         self.data.capacity()
     }
     #[inline]
-    fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.data.len()
     }
 }
@@ -1149,7 +1176,7 @@ cfg_digit!(
     fn test_from_slice() {
         fn check(slice: &[u32], data: &[BigDigit]) {
             assert_eq!(
-                BigUint::from_slice(slice).data,
+                BigUint::<32>::from_slice(slice).data,
                 data,
                 "from {:?}, to {:?}",
                 slice,

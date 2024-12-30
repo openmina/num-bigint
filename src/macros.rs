@@ -14,27 +14,28 @@ macro_rules! cfg_32_or_test {
 
 macro_rules! cfg_64 {
     ($($any:tt)+) => {
-        #[cfg(target_pointer_width = "64")] $($any)+
+        $($any)+
+        // #[cfg(target_pointer_width = "64")] $($any)+
     }
 }
 
 macro_rules! cfg_digit {
     ($item32:item $item64:item) => {
-        cfg_32!($item32);
+        // cfg_32!($item32);
         cfg_64!($item64);
     };
 }
 
 macro_rules! cfg_digit_expr {
     ($expr32:expr, $expr64:expr) => {
-        cfg_32!($expr32);
+        // cfg_32!($expr32);
         cfg_64!($expr64);
     };
 }
 
 macro_rules! forward_val_val_binop {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<$res> for $res {
+        impl<const N: usize> $imp<$res> for $res {
             type Output = $res;
 
             #[inline]
@@ -48,7 +49,7 @@ macro_rules! forward_val_val_binop {
 
 macro_rules! forward_val_val_binop_commutative {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<$res> for $res {
+        impl<const N: usize> $imp<$res> for $res {
             type Output = $res;
 
             #[inline]
@@ -66,7 +67,7 @@ macro_rules! forward_val_val_binop_commutative {
 
 macro_rules! forward_ref_val_binop {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<$res> for &$res {
+        impl<const N: usize> $imp<$res> for &$res {
             type Output = $res;
 
             #[inline]
@@ -80,7 +81,7 @@ macro_rules! forward_ref_val_binop {
 
 macro_rules! forward_ref_val_binop_commutative {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<$res> for &$res {
+        impl<const N: usize> $imp<$res> for &$res {
             type Output = $res;
 
             #[inline]
@@ -94,7 +95,7 @@ macro_rules! forward_ref_val_binop_commutative {
 
 macro_rules! forward_val_ref_binop {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<&$res> for $res {
+        impl<const N: usize> $imp<&$res> for $res {
             type Output = $res;
 
             #[inline]
@@ -108,7 +109,7 @@ macro_rules! forward_val_ref_binop {
 
 macro_rules! forward_ref_ref_binop {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<&$res> for &$res {
+        impl<const N: usize> $imp<&$res> for &$res {
             type Output = $res;
 
             #[inline]
@@ -122,7 +123,7 @@ macro_rules! forward_ref_ref_binop {
 
 macro_rules! forward_ref_ref_binop_commutative {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<&$res> for &$res {
+        impl<const N: usize> $imp<&$res> for &$res {
             type Output = $res;
 
             #[inline]
@@ -140,7 +141,7 @@ macro_rules! forward_ref_ref_binop_commutative {
 
 macro_rules! forward_val_assign {
     (impl $imp:ident for $res:ty, $method:ident) => {
-        impl $imp<$res> for $res {
+        impl<const N: usize> $imp<$res> for $res {
             #[inline]
             fn $method(&mut self, other: $res) {
                 self.$method(&other);
@@ -151,7 +152,7 @@ macro_rules! forward_val_assign {
 
 macro_rules! forward_val_assign_scalar {
     (impl $imp:ident for $res:ty, $scalar:ty, $method:ident) => {
-        impl $imp<$res> for $scalar {
+        impl<const N: usize> $imp<$res> for $scalar {
             #[inline]
             fn $method(&mut self, other: $res) {
                 self.$method(&other);
@@ -163,7 +164,7 @@ macro_rules! forward_val_assign_scalar {
 /// use this if val_val_binop is already implemented and the reversed order is required
 macro_rules! forward_scalar_val_val_binop_commutative {
     (impl $imp:ident < $scalar:ty > for $res:ty, $method:ident) => {
-        impl $imp<$res> for $scalar {
+        impl<const N: usize> $imp<$res> for $scalar {
             type Output = $res;
 
             #[inline]
@@ -177,7 +178,7 @@ macro_rules! forward_scalar_val_val_binop_commutative {
 // Forward scalar to ref-val, when reusing storage is not helpful
 macro_rules! forward_scalar_val_val_binop_to_ref_val {
     (impl $imp:ident<$scalar:ty> for $res:ty, $method:ident) => {
-        impl $imp<$scalar> for $res {
+        impl<const N: usize> $imp<$scalar> for $res {
             type Output = $res;
 
             #[inline]
@@ -186,7 +187,7 @@ macro_rules! forward_scalar_val_val_binop_to_ref_val {
             }
         }
 
-        impl $imp<$res> for $scalar {
+        impl<const N: usize> $imp<$res> for $scalar {
             type Output = $res;
 
             #[inline]
@@ -199,7 +200,7 @@ macro_rules! forward_scalar_val_val_binop_to_ref_val {
 
 macro_rules! forward_scalar_ref_ref_binop_to_ref_val {
     (impl $imp:ident<$scalar:ty> for $res:ty, $method:ident) => {
-        impl $imp<&$scalar> for &$res {
+        impl<const N: usize> $imp<&$scalar> for &$res {
             type Output = $res;
 
             #[inline]
@@ -208,7 +209,7 @@ macro_rules! forward_scalar_ref_ref_binop_to_ref_val {
             }
         }
 
-        impl $imp<&$res> for &$scalar {
+        impl<const N: usize> $imp<&$res> for &$scalar {
             type Output = $res;
 
             #[inline]
@@ -221,7 +222,7 @@ macro_rules! forward_scalar_ref_ref_binop_to_ref_val {
 
 macro_rules! forward_scalar_val_ref_binop_to_ref_val {
     (impl $imp:ident<$scalar:ty> for $res:ty, $method:ident) => {
-        impl $imp<&$scalar> for $res {
+        impl<const N: usize> $imp<&$scalar> for $res {
             type Output = $res;
 
             #[inline]
@@ -230,7 +231,7 @@ macro_rules! forward_scalar_val_ref_binop_to_ref_val {
             }
         }
 
-        impl $imp<$res> for &$scalar {
+        impl<const N: usize> $imp<$res> for &$scalar {
             type Output = $res;
 
             #[inline]
@@ -243,7 +244,7 @@ macro_rules! forward_scalar_val_ref_binop_to_ref_val {
 
 macro_rules! forward_scalar_val_ref_binop_to_val_val {
     (impl $imp:ident<$scalar:ty> for $res:ty, $method:ident) => {
-        impl $imp<&$scalar> for $res {
+        impl<const N: usize> $imp<&$scalar> for $res {
             type Output = $res;
 
             #[inline]
@@ -252,7 +253,7 @@ macro_rules! forward_scalar_val_ref_binop_to_val_val {
             }
         }
 
-        impl $imp<$res> for &$scalar {
+        impl<const N: usize> $imp<$res> for &$scalar {
             type Output = $res;
 
             #[inline]
@@ -265,7 +266,7 @@ macro_rules! forward_scalar_val_ref_binop_to_val_val {
 
 macro_rules! forward_scalar_ref_val_binop_to_val_val {
     (impl $imp:ident < $scalar:ty > for $res:ty, $method:ident) => {
-        impl $imp<$scalar> for &$res {
+        impl<const N: usize> $imp<$scalar> for &$res {
             type Output = $res;
 
             #[inline]
@@ -274,7 +275,7 @@ macro_rules! forward_scalar_ref_val_binop_to_val_val {
             }
         }
 
-        impl $imp<&$res> for $scalar {
+        impl<const N: usize> $imp<&$res> for $scalar {
             type Output = $res;
 
             #[inline]
@@ -287,7 +288,7 @@ macro_rules! forward_scalar_ref_val_binop_to_val_val {
 
 macro_rules! forward_scalar_ref_ref_binop_to_val_val {
     (impl $imp:ident<$scalar:ty> for $res:ty, $method:ident) => {
-        impl $imp<&$scalar> for &$res {
+        impl<const N: usize> $imp<&$scalar> for &$res {
             type Output = $res;
 
             #[inline]
@@ -296,7 +297,7 @@ macro_rules! forward_scalar_ref_ref_binop_to_val_val {
             }
         }
 
-        impl $imp<&$res> for &$scalar {
+        impl<const N: usize> $imp<&$res> for &$scalar {
             type Output = $res;
 
             #[inline]
@@ -312,7 +313,7 @@ macro_rules! promote_scalars {
         $(
             forward_all_scalar_binop_to_val_val!(impl $imp<$scalar> for $res, $method);
 
-            impl $imp<$scalar> for $res {
+            impl<const N: usize> $imp<$scalar> for $res {
                 type Output = $res;
 
                 #[allow(clippy::cast_lossless)]
@@ -322,7 +323,7 @@ macro_rules! promote_scalars {
                 }
             }
 
-            impl $imp<$res> for $scalar {
+            impl<const N: usize> $imp<$res> for $scalar {
                 type Output = $res;
 
                 #[allow(clippy::cast_lossless)]
@@ -337,7 +338,7 @@ macro_rules! promote_scalars {
 macro_rules! promote_scalars_assign {
     (impl $imp:ident<$promo:ty> for $res:ty, $method:ident, $( $scalar:ty ),*) => {
         $(
-            impl $imp<$scalar> for $res {
+            impl<const N: usize> $imp<$scalar> for $res {
                 #[allow(clippy::cast_lossless)]
                 #[inline]
                 fn $method(&mut self, other: $scalar) {
@@ -450,7 +451,7 @@ macro_rules! impl_sum_iter_type {
             where
                 I: Iterator<Item = T>,
             {
-                iter.fold(Self::ZERO, <$res>::add)
+                iter.fold(Self::zero(), <$res>::add)
             }
         }
     };

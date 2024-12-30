@@ -9,15 +9,16 @@ use core::fmt;
 use core::hash;
 use core::ops::{Neg, Not};
 use core::str;
+use tinyvec::TinyVec;
 
 use num_integer::{Integer, Roots};
-use num_traits::{ConstZero, Num, One, Pow, Signed, Zero};
+use num_traits::{Num, One, Pow, Signed, Zero};
 
 use self::Sign::{Minus, NoSign, Plus};
 
 use crate::big_digit::BigDigit;
-use crate::biguint::to_str_radix_reversed;
-use crate::biguint::{BigUint, IntDigits, U32Digits, U64Digits};
+use crate::biguint::{to_str_radix_reversed, NLIMBS};
+use crate::biguint::{BigUint, U32Digits, U64Digits};
 
 mod addition;
 mod division;
@@ -53,15 +54,24 @@ impl Neg for Sign {
     }
 }
 
+impl<const A: usize> BigInt<A> {
+    pub fn to_nlimbs<const N2: usize>(&self) -> BigInt<N2> {
+        BigInt {
+            sign: self.sign,
+            data: self.data.to_nlimbs(),
+        }
+    }
+}
+
 /// A big signed integer type.
-pub struct BigInt {
+pub struct BigInt<const N: usize = NLIMBS> {
     sign: Sign,
-    data: BigUint,
+    data: BigUint<N>,
 }
 
 // Note: derived `Clone` doesn't specialize `clone_from`,
 // but we want to keep the allocation in `data`.
-impl Clone for BigInt {
+impl<const N: usize> Clone for BigInt<N> {
     #[inline]
     fn clone(&self) -> Self {
         BigInt {
@@ -77,7 +87,7 @@ impl Clone for BigInt {
     }
 }
 
-impl hash::Hash for BigInt {
+impl<const N: usize> hash::Hash for BigInt<N> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         debug_assert!((self.sign != NoSign) ^ self.data.is_zero());
@@ -88,27 +98,27 @@ impl hash::Hash for BigInt {
     }
 }
 
-impl PartialEq for BigInt {
+impl<const N: usize> PartialEq for BigInt<N> {
     #[inline]
-    fn eq(&self, other: &BigInt) -> bool {
+    fn eq(&self, other: &BigInt<N>) -> bool {
         debug_assert!((self.sign != NoSign) ^ self.data.is_zero());
         debug_assert!((other.sign != NoSign) ^ other.data.is_zero());
         self.sign == other.sign && (self.sign == NoSign || self.data == other.data)
     }
 }
 
-impl Eq for BigInt {}
+impl<const N: usize> Eq for BigInt<N> {}
 
-impl PartialOrd for BigInt {
+impl<const N: usize> PartialOrd for BigInt<N> {
     #[inline]
-    fn partial_cmp(&self, other: &BigInt) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &BigInt<N>) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for BigInt {
+impl<const N: usize> Ord for BigInt<N> {
     #[inline]
-    fn cmp(&self, other: &BigInt) -> Ordering {
+    fn cmp(&self, other: &BigInt<N>) -> Ordering {
         debug_assert!((self.sign != NoSign) ^ self.data.is_zero());
         debug_assert!((other.sign != NoSign) ^ other.data.is_zero());
         let scmp = self.sign.cmp(&other.sign);
@@ -124,20 +134,20 @@ impl Ord for BigInt {
     }
 }
 
-impl Default for BigInt {
+impl<const N: usize> Default for BigInt<N> {
     #[inline]
-    fn default() -> BigInt {
-        Self::ZERO
+    fn default() -> BigInt<N> {
+        Self::zero()
     }
 }
 
-impl fmt::Debug for BigInt {
+impl<const N: usize> fmt::Debug for BigInt<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-impl fmt::Display for BigInt {
+impl<const N: usize> fmt::Display for BigInt<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad_integral(!self.is_negative(), "", &self.data.to_str_radix(10))
     }
@@ -173,10 +183,10 @@ impl fmt::UpperHex for BigInt {
 // !-1 = !...f ff = ...0 00 =  0
 // ! 0 = !...0 00 = ...f ff = -1
 // !+1 = !...0 01 = ...f fe = -2
-impl Not for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Not for BigInt<N> {
+    type Output = BigInt<N>;
 
-    fn not(mut self) -> BigInt {
+    fn not(mut self) -> BigInt<N> {
         match self.sign {
             NoSign | Plus => {
                 self.data += 1u32;
@@ -191,10 +201,10 @@ impl Not for BigInt {
     }
 }
 
-impl Not for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> Not for &BigInt<N> {
+    type Output = BigInt<N>;
 
-    fn not(self) -> BigInt {
+    fn not(self) -> BigInt<N> {
         match self.sign {
             NoSign => -BigInt::one(),
             Plus => -BigInt::from(&self.data + 1u32),
@@ -203,10 +213,10 @@ impl Not for &BigInt {
     }
 }
 
-impl Zero for BigInt {
+impl<const N: usize> Zero for BigInt<N> {
     #[inline]
-    fn zero() -> BigInt {
-        Self::ZERO
+    fn zero() -> BigInt<N> {
+        Self::zero()
     }
 
     #[inline]
@@ -221,14 +231,14 @@ impl Zero for BigInt {
     }
 }
 
-impl ConstZero for BigInt {
-    // forward to the inherent const
-    const ZERO: Self = Self::ZERO;
-}
+// impl ConstZero for BigInt {
+//     // forward to the inherent const
+//     const ZERO: Self = Self::zero();
+// }
 
-impl One for BigInt {
+impl<const N: usize> One for BigInt<N> {
     #[inline]
-    fn one() -> BigInt {
+    fn one() -> BigInt<N> {
         BigInt {
             sign: Plus,
             data: BigUint::one(),
@@ -247,9 +257,9 @@ impl One for BigInt {
     }
 }
 
-impl Signed for BigInt {
+impl<const N: usize> Signed for BigInt<N> {
     #[inline]
-    fn abs(&self) -> BigInt {
+    fn abs(&self) -> BigInt<N> {
         match self.sign {
             Plus | NoSign => self.clone(),
             Minus => BigInt::from(self.data.clone()),
@@ -257,20 +267,20 @@ impl Signed for BigInt {
     }
 
     #[inline]
-    fn abs_sub(&self, other: &BigInt) -> BigInt {
+    fn abs_sub(&self, other: &BigInt<N>) -> BigInt<N> {
         if *self <= *other {
-            Self::ZERO
+            Self::zero()
         } else {
             self - other
         }
     }
 
     #[inline]
-    fn signum(&self) -> BigInt {
+    fn signum(&self) -> BigInt<N> {
         match self.sign {
             Plus => BigInt::one(),
             Minus => -BigInt::one(),
-            NoSign => Self::ZERO,
+            NoSign => Self::zero(),
         }
     }
 
@@ -320,28 +330,28 @@ impl_unsigned_abs!(i64, u64);
 impl_unsigned_abs!(i128, u128);
 impl_unsigned_abs!(isize, usize);
 
-impl Neg for BigInt {
-    type Output = BigInt;
+impl<const N: usize> Neg for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn neg(mut self) -> BigInt {
+    fn neg(mut self) -> BigInt<N> {
         self.sign = -self.sign;
         self
     }
 }
 
-impl Neg for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> Neg for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn neg(self) -> BigInt {
+    fn neg(self) -> BigInt<N> {
         -self.clone()
     }
 }
 
-impl Integer for BigInt {
+impl<const N: usize> Integer for BigInt<N> {
     #[inline]
-    fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn div_rem(&self, other: &BigInt<N>) -> (BigInt<N>, BigInt<N>) {
         // r.sign == self.sign
         let (d_ui, r_ui) = self.data.div_rem(&other.data);
         let d = BigInt::from_biguint(self.sign, d_ui);
@@ -354,7 +364,7 @@ impl Integer for BigInt {
     }
 
     #[inline]
-    fn div_floor(&self, other: &BigInt) -> BigInt {
+    fn div_floor(&self, other: &BigInt<N>) -> BigInt<N> {
         let (d_ui, m) = self.data.div_mod_floor(&other.data);
         let d = BigInt::from(d_ui);
         match (self.sign, other.sign) {
@@ -371,7 +381,7 @@ impl Integer for BigInt {
     }
 
     #[inline]
-    fn mod_floor(&self, other: &BigInt) -> BigInt {
+    fn mod_floor(&self, other: &BigInt<N>) -> BigInt<N> {
         // m.sign == other.sign
         let m_ui = self.data.mod_floor(&other.data);
         let m = BigInt::from_biguint(other.sign, m_ui);
@@ -388,7 +398,7 @@ impl Integer for BigInt {
         }
     }
 
-    fn div_mod_floor(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn div_mod_floor(&self, other: &BigInt<N>) -> (BigInt<N>, BigInt<N>) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.div_mod_floor(&other.data);
         let d = BigInt::from(d_ui);
@@ -427,30 +437,33 @@ impl Integer for BigInt {
     ///
     /// The result is always positive.
     #[inline]
-    fn gcd(&self, other: &BigInt) -> BigInt {
+    fn gcd(&self, other: &BigInt<N>) -> BigInt<N> {
         BigInt::from(self.data.gcd(&other.data))
     }
 
     /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
     #[inline]
-    fn lcm(&self, other: &BigInt) -> BigInt {
+    fn lcm(&self, other: &BigInt<N>) -> BigInt<N> {
         BigInt::from(self.data.lcm(&other.data))
     }
 
     /// Calculates the Greatest Common Divisor (GCD) and
     /// Lowest Common Multiple (LCM) together.
     #[inline]
-    fn gcd_lcm(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn gcd_lcm(&self, other: &BigInt<N>) -> (BigInt<N>, BigInt<N>) {
         let (gcd, lcm) = self.data.gcd_lcm(&other.data);
         (BigInt::from(gcd), BigInt::from(lcm))
     }
 
     /// Greatest common divisor, least common multiple, and Bézout coefficients.
     #[inline]
-    fn extended_gcd_lcm(&self, other: &BigInt) -> (num_integer::ExtendedGcd<BigInt>, BigInt) {
+    fn extended_gcd_lcm(
+        &self,
+        other: &BigInt<N>,
+    ) -> (num_integer::ExtendedGcd<BigInt<N>>, BigInt<N>) {
         let egcd = self.extended_gcd(other);
         let lcm = if egcd.gcd.is_zero() {
-            Self::ZERO
+            Self::zero()
         } else {
             BigInt::from(&self.data / &egcd.gcd.data * &other.data)
         };
@@ -459,13 +472,13 @@ impl Integer for BigInt {
 
     /// Deprecated, use `is_multiple_of` instead.
     #[inline]
-    fn divides(&self, other: &BigInt) -> bool {
+    fn divides(&self, other: &BigInt<N>) -> bool {
         self.is_multiple_of(other)
     }
 
     /// Returns `true` if the number is a multiple of `other`.
     #[inline]
-    fn is_multiple_of(&self, other: &BigInt) -> bool {
+    fn is_multiple_of(&self, other: &BigInt<N>) -> bool {
         self.data.is_multiple_of(&other.data)
     }
 
@@ -506,7 +519,7 @@ impl Integer for BigInt {
     }
 }
 
-impl Roots for BigInt {
+impl<const N: usize> Roots for BigInt<N> {
     fn nth_root(&self, n: u32) -> Self {
         assert!(
             !(self.is_negative() && n.is_even()),
@@ -528,28 +541,28 @@ impl Roots for BigInt {
     }
 }
 
-impl IntDigits for BigInt {
+impl<const N: usize> BigInt<N> {
     #[inline]
-    fn digits(&self) -> &[BigDigit] {
+    pub(crate) fn digits(&self) -> &[BigDigit] {
         self.data.digits()
     }
     #[inline]
-    fn digits_mut(&mut self) -> &mut Vec<BigDigit> {
+    pub(crate) fn digits_mut(&mut self) -> &mut TinyVec<[BigDigit; N]> {
         self.data.digits_mut()
     }
     #[inline]
-    fn normalize(&mut self) {
+    pub(crate) fn normalize(&mut self) {
         self.data.normalize();
         if self.data.is_zero() {
             self.sign = NoSign;
         }
     }
     #[inline]
-    fn capacity(&self) -> usize {
+    pub(crate) fn capacity(&self) -> usize {
         self.data.capacity()
     }
     #[inline]
-    fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.data.len()
     }
 }
@@ -559,29 +572,36 @@ impl IntDigits for BigInt {
 /// when converting from any integer or unsigned primitive, or [`BigUint`].
 pub trait ToBigInt {
     /// Converts the value of `self` to a [`BigInt`].
-    fn to_bigint(&self) -> Option<BigInt>;
+    fn to_bigint(&self) -> Option<BigInt<32>>;
 }
 
-impl BigInt {
-    /// A constant `BigInt` with value 0, useful for static initialization.
-    pub const ZERO: Self = BigInt {
-        sign: NoSign,
-        data: BigUint::ZERO,
-    };
+impl<const N: usize> BigInt<N> {
+    // A constant `BigInt` with value 0, useful for static initialization.
+    // pub const ZERO: Self = BigInt {
+    //     sign: NoSign,
+    //     data: BigUint::zero(),
+    // };
 
-    /// Creates and initializes a [`BigInt`].
-    ///
-    /// The base 2<sup>32</sup> digits are ordered least significant digit first.
-    #[inline]
-    pub fn new(sign: Sign, digits: Vec<u32>) -> BigInt {
-        BigInt::from_biguint(sign, BigUint::new(digits))
+    pub fn zero() -> Self {
+        Self {
+            sign: NoSign,
+            data: BigUint::zero(),
+        }
     }
 
     /// Creates and initializes a [`BigInt`].
     ///
     /// The base 2<sup>32</sup> digits are ordered least significant digit first.
     #[inline]
-    pub fn from_biguint(mut sign: Sign, mut data: BigUint) -> BigInt {
+    pub fn new(sign: Sign, digits: Vec<u32>) -> BigInt<N> {
+        BigInt::from_biguint(sign, BigUint::<N>::new(digits))
+    }
+
+    /// Creates and initializes a [`BigInt`].
+    ///
+    /// The base 2<sup>32</sup> digits are ordered least significant digit first.
+    #[inline]
+    pub fn from_biguint(mut sign: Sign, mut data: BigUint<N>) -> BigInt<N> {
         if sign == NoSign {
             data.assign_from_slice(&[]);
         } else if data.is_zero() {
@@ -595,8 +615,8 @@ impl BigInt {
     ///
     /// The base 2<sup>32</sup> digits are ordered least significant digit first.
     #[inline]
-    pub fn from_slice(sign: Sign, slice: &[u32]) -> BigInt {
-        BigInt::from_biguint(sign, BigUint::from_slice(slice))
+    pub fn from_slice(sign: Sign, slice: &[u32]) -> BigInt<N> {
+        BigInt::from_biguint(sign, BigUint::<N>::from_slice(slice))
     }
 
     /// Reinitializes a [`BigInt`].
@@ -631,7 +651,7 @@ impl BigInt {
     ///            BigInt::parse_bytes(b"22405534230753963835153736737", 10).unwrap());
     /// ```
     #[inline]
-    pub fn from_bytes_be(sign: Sign, bytes: &[u8]) -> BigInt {
+    pub fn from_bytes_be(sign: Sign, bytes: &[u8]) -> BigInt<N> {
         BigInt::from_biguint(sign, BigUint::from_bytes_be(bytes))
     }
 
@@ -639,25 +659,8 @@ impl BigInt {
     ///
     /// The bytes are in little-endian byte order.
     #[inline]
-    pub fn from_bytes_le(sign: Sign, bytes: &[u8]) -> BigInt {
+    pub fn from_bytes_le(sign: Sign, bytes: &[u8]) -> BigInt<N> {
         BigInt::from_biguint(sign, BigUint::from_bytes_le(bytes))
-    }
-
-    /// Creates and initializes a [`BigInt`] from an array of bytes in
-    /// two's complement binary representation.
-    ///
-    /// The digits are in big-endian base 2<sup>8</sup>.
-    #[inline]
-    pub fn from_signed_bytes_be(digits: &[u8]) -> BigInt {
-        convert::from_signed_bytes_be(digits)
-    }
-
-    /// Creates and initializes a [`BigInt`] from an array of bytes in two's complement.
-    ///
-    /// The digits are in little-endian base 2<sup>8</sup>.
-    #[inline]
-    pub fn from_signed_bytes_le(digits: &[u8]) -> BigInt {
-        convert::from_signed_bytes_le(digits)
     }
 
     /// Creates and initializes a [`BigInt`].
@@ -672,9 +675,9 @@ impl BigInt {
     /// assert_eq!(BigInt::parse_bytes(b"G", 16), None);
     /// ```
     #[inline]
-    pub fn parse_bytes(buf: &[u8], radix: u32) -> Option<BigInt> {
+    pub fn parse_bytes(buf: &[u8], radix: u32) -> Option<BigInt<N>> {
         let s = str::from_utf8(buf).ok()?;
-        BigInt::from_str_radix(s, radix).ok()
+        BigInt::<N>::from_str_radix(s, radix).ok()
     }
 
     /// Creates and initializes a [`BigInt`]. Each `u8` of the input slice is
@@ -693,7 +696,7 @@ impl BigInt {
     /// let a = BigInt::from_radix_be(Sign::Minus, &inbase190, 190).unwrap();
     /// assert_eq!(a.to_radix_be(190), (Sign:: Minus, inbase190));
     /// ```
-    pub fn from_radix_be(sign: Sign, buf: &[u8], radix: u32) -> Option<BigInt> {
+    pub fn from_radix_be(sign: Sign, buf: &[u8], radix: u32) -> Option<BigInt<N>> {
         let u = BigUint::from_radix_be(buf, radix)?;
         Some(BigInt::from_biguint(sign, u))
     }
@@ -714,7 +717,7 @@ impl BigInt {
     /// let a = BigInt::from_radix_be(Sign::Minus, &inbase190, 190).unwrap();
     /// assert_eq!(a.to_radix_be(190), (Sign::Minus, inbase190));
     /// ```
-    pub fn from_radix_le(sign: Sign, buf: &[u8], radix: u32) -> Option<BigInt> {
+    pub fn from_radix_le(sign: Sign, buf: &[u8], radix: u32) -> Option<BigInt<N>> {
         let u = BigUint::from_radix_le(buf, radix)?;
         Some(BigInt::from_biguint(sign, u))
     }
@@ -947,7 +950,7 @@ impl BigInt {
     /// assert!(BigInt::ZERO.magnitude().is_zero());
     /// ```
     #[inline]
-    pub fn magnitude(&self) -> &BigUint {
+    pub fn magnitude(&self) -> &BigUint<N> {
         &self.data
     }
 
@@ -964,7 +967,7 @@ impl BigInt {
     /// assert_eq!(BigInt::ZERO.into_parts(), (Sign::NoSign, BigUint::ZERO));
     /// ```
     #[inline]
-    pub fn into_parts(self) -> (Sign, BigUint) {
+    pub fn into_parts(self) -> (Sign, BigUint<N>) {
         (self.sign, self.data)
     }
 
@@ -977,31 +980,31 @@ impl BigInt {
 
     /// Converts this [`BigInt`] into a [`BigUint`], if it's not negative.
     #[inline]
-    pub fn to_biguint(&self) -> Option<BigUint> {
+    pub fn to_biguint(&self) -> Option<BigUint<N>> {
         match self.sign {
             Plus => Some(self.data.clone()),
-            NoSign => Some(BigUint::ZERO),
+            NoSign => Some(BigUint::zero()),
             Minus => None,
         }
     }
 
     #[inline]
-    pub fn checked_add(&self, v: &BigInt) -> Option<BigInt> {
+    pub fn checked_add(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         Some(self + v)
     }
 
     #[inline]
-    pub fn checked_sub(&self, v: &BigInt) -> Option<BigInt> {
+    pub fn checked_sub(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         Some(self - v)
     }
 
     #[inline]
-    pub fn checked_mul(&self, v: &BigInt) -> Option<BigInt> {
+    pub fn checked_mul(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         Some(self * v)
     }
 
     #[inline]
-    pub fn checked_div(&self, v: &BigInt) -> Option<BigInt> {
+    pub fn checked_div(&self, v: &BigInt<N>) -> Option<BigInt<N>> {
         if v.is_zero() {
             return None;
         }
@@ -1022,7 +1025,7 @@ impl BigInt {
     ///
     /// Panics if the exponent is negative or the modulus is zero.
     pub fn modpow(&self, exponent: &Self, modulus: &Self) -> Self {
-        power::modpow(self, exponent, modulus)
+        power::modpow::<N>(self, exponent, modulus)
     }
 
     /// Returns the modular multiplicative inverse if it exists, otherwise `None`.
@@ -1152,6 +1155,25 @@ impl BigInt {
         }
         // The top bit may have been cleared, so normalize
         self.normalize();
+    }
+}
+
+impl BigInt {
+    /// Creates and initializes a [`BigInt`] from an array of bytes in
+    /// two's complement binary representation.
+    ///
+    /// The digits are in big-endian base 2<sup>8</sup>.
+    #[inline]
+    pub fn from_signed_bytes_be(digits: &[u8]) -> BigInt {
+        convert::from_signed_bytes_be(digits)
+    }
+
+    /// Creates and initializes a [`BigInt`] from an array of bytes in two's complement.
+    ///
+    /// The digits are in little-endian base 2<sup>8</sup>.
+    #[inline]
+    pub fn from_signed_bytes_le(digits: &[u8]) -> BigInt {
+        convert::from_signed_bytes_le(digits)
     }
 }
 

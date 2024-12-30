@@ -104,29 +104,29 @@ fn sub2rev(a: &[BigDigit], b: &mut [BigDigit]) {
     );
 }
 
-forward_val_val_binop!(impl Sub for BigUint, sub);
-forward_ref_ref_binop!(impl Sub for BigUint, sub);
-forward_val_assign!(impl SubAssign for BigUint, sub_assign);
+forward_val_val_binop!(impl Sub for BigUint<N>, sub);
+forward_ref_ref_binop!(impl Sub for BigUint<N>, sub);
+forward_val_assign!(impl SubAssign for BigUint<N>, sub_assign);
 
-impl Sub<&BigUint> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Sub<&BigUint<N>> for BigUint<N> {
+    type Output = BigUint<N>;
 
-    fn sub(mut self, other: &BigUint) -> BigUint {
+    fn sub(mut self, other: &BigUint<N>) -> BigUint<N> {
         self -= other;
         self
     }
 }
-impl SubAssign<&BigUint> for BigUint {
-    fn sub_assign(&mut self, other: &BigUint) {
+impl<const N: usize> SubAssign<&BigUint<N>> for BigUint<N> {
+    fn sub_assign(&mut self, other: &BigUint<N>) {
         sub2(&mut self.data[..], &other.data[..]);
         self.normalize();
     }
 }
 
-impl Sub<BigUint> for &BigUint {
-    type Output = BigUint;
+impl<const N: usize> Sub<BigUint<N>> for &BigUint<N> {
+    type Output = BigUint<N>;
 
-    fn sub(self, mut other: BigUint) -> BigUint {
+    fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
         let other_len = other.data.len();
         if other_len < self.data.len() {
             let lo_borrow = __sub2rev(&self.data[..other_len], &mut other.data);
@@ -141,35 +141,35 @@ impl Sub<BigUint> for &BigUint {
     }
 }
 
-promote_unsigned_scalars!(impl Sub for BigUint, sub);
-promote_unsigned_scalars_assign!(impl SubAssign for BigUint, sub_assign);
-forward_all_scalar_binop_to_val_val!(impl Sub<u32> for BigUint, sub);
-forward_all_scalar_binop_to_val_val!(impl Sub<u64> for BigUint, sub);
-forward_all_scalar_binop_to_val_val!(impl Sub<u128> for BigUint, sub);
+promote_unsigned_scalars!(impl Sub for BigUint<N>, sub);
+promote_unsigned_scalars_assign!(impl SubAssign for BigUint<N>, sub_assign);
+forward_all_scalar_binop_to_val_val!(impl Sub<u32> for BigUint<N>, sub);
+forward_all_scalar_binop_to_val_val!(impl Sub<u64> for BigUint<N>, sub);
+forward_all_scalar_binop_to_val_val!(impl Sub<u128> for BigUint<N>, sub);
 
-impl Sub<u32> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Sub<u32> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn sub(mut self, other: u32) -> BigUint {
+    fn sub(mut self, other: u32) -> BigUint<N> {
         self -= other;
         self
     }
 }
 
-impl SubAssign<u32> for BigUint {
+impl<const N: usize> SubAssign<u32> for BigUint<N> {
     fn sub_assign(&mut self, other: u32) {
         sub2(&mut self.data[..], &[other as BigDigit]);
         self.normalize();
     }
 }
 
-impl Sub<BigUint> for u32 {
-    type Output = BigUint;
+impl<const N: usize> Sub<BigUint<N>> for u32 {
+    type Output = BigUint<N>;
 
     cfg_digit!(
         #[inline]
-        fn sub(self, mut other: BigUint) -> BigUint {
+        fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
             if other.data.len() == 0 {
                 other.data.push(self);
             } else {
@@ -179,7 +179,7 @@ impl Sub<BigUint> for u32 {
         }
 
         #[inline]
-        fn sub(self, mut other: BigUint) -> BigUint {
+        fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
             if other.data.is_empty() {
                 other.data.push(self as BigDigit);
             } else {
@@ -190,17 +190,17 @@ impl Sub<BigUint> for u32 {
     );
 }
 
-impl Sub<u64> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Sub<u64> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn sub(mut self, other: u64) -> BigUint {
+    fn sub(mut self, other: u64) -> BigUint<N> {
         self -= other;
         self
     }
 }
 
-impl SubAssign<u64> for BigUint {
+impl<const N: usize> SubAssign<u64> for BigUint<N> {
     cfg_digit!(
         #[inline]
         fn sub_assign(&mut self, other: u64) {
@@ -217,12 +217,12 @@ impl SubAssign<u64> for BigUint {
     );
 }
 
-impl Sub<BigUint> for u64 {
-    type Output = BigUint;
+impl<const N: usize> Sub<BigUint<N>> for u64 {
+    type Output = BigUint<N>;
 
     cfg_digit!(
         #[inline]
-        fn sub(self, mut other: BigUint) -> BigUint {
+        fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
             while other.data.len() < 2 {
                 other.data.push(0);
             }
@@ -233,7 +233,7 @@ impl Sub<BigUint> for u64 {
         }
 
         #[inline]
-        fn sub(self, mut other: BigUint) -> BigUint {
+        fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
             if other.data.is_empty() {
                 other.data.push(self);
             } else {
@@ -244,17 +244,17 @@ impl Sub<BigUint> for u64 {
     );
 }
 
-impl Sub<u128> for BigUint {
-    type Output = BigUint;
+impl<const N: usize> Sub<u128> for BigUint<N> {
+    type Output = BigUint<N>;
 
     #[inline]
-    fn sub(mut self, other: u128) -> BigUint {
+    fn sub(mut self, other: u128) -> BigUint<N> {
         self -= other;
         self
     }
 }
 
-impl SubAssign<u128> for BigUint {
+impl<const N: usize> SubAssign<u128> for BigUint<N> {
     cfg_digit!(
         #[inline]
         fn sub_assign(&mut self, other: u128) {
@@ -272,12 +272,12 @@ impl SubAssign<u128> for BigUint {
     );
 }
 
-impl Sub<BigUint> for u128 {
-    type Output = BigUint;
+impl<const N: usize> Sub<BigUint<N>> for u128 {
+    type Output = BigUint<N>;
 
     cfg_digit!(
         #[inline]
-        fn sub(self, mut other: BigUint) -> BigUint {
+        fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
             while other.data.len() < 4 {
                 other.data.push(0);
             }
@@ -288,7 +288,7 @@ impl Sub<BigUint> for u128 {
         }
 
         #[inline]
-        fn sub(self, mut other: BigUint) -> BigUint {
+        fn sub(self, mut other: BigUint<N>) -> BigUint<N> {
             while other.data.len() < 2 {
                 other.data.push(0);
             }
@@ -300,12 +300,12 @@ impl Sub<BigUint> for u128 {
     );
 }
 
-impl CheckedSub for BigUint {
+impl<const N: usize> CheckedSub for BigUint<N> {
     #[inline]
-    fn checked_sub(&self, v: &BigUint) -> Option<BigUint> {
+    fn checked_sub(&self, v: &BigUint<N>) -> Option<BigUint<N>> {
         match self.cmp(v) {
             Less => None,
-            Equal => Some(Self::ZERO),
+            Equal => Some(Self::zero()),
             Greater => Some(self.sub(v)),
         }
     }

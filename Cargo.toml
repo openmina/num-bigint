@@ -43,6 +43,7 @@ harness = false
 name = "shootout-pidigits"
 
 [dependencies]
+tinyvec = { version = "1", features = [ "alloc", "rustc_1_55" ] }
 
 [dependencies.num-integer]
 version = "0.1.46"

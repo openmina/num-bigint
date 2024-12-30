@@ -2,12 +2,11 @@ use super::BigInt;
 use super::Sign::{Minus, NoSign, Plus};
 
 use crate::big_digit::{self, BigDigit, DoubleBigDigit};
-use crate::biguint::IntDigits;
 
-use alloc::vec::Vec;
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 use num_traits::{ToPrimitive, Zero};
+use tinyvec::TinyVec;
 
 // Negation in two's complement.
 // acc must be initialized as 1 for least-significant digit.
@@ -48,7 +47,7 @@ fn bitand_pos_neg(a: &mut [BigDigit], b: &[BigDigit]) {
 // - 1 & +ff = ...f ff & ...0 ff = ...0 ff = +ff
 // -ff & + 1 = ...f 01 & ...0 01 = ...0 01 = + 1
 // answer is pos, has length of b
-fn bitand_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitand_neg_pos<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
         let twos_a = negate_carry(*ai, &mut carry_a);
@@ -69,7 +68,7 @@ fn bitand_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
 // -ff & - 1 = ...f 01 & ...f ff = ...f 01 = - ff
 // -ff & -fe = ...f 01 & ...f 02 = ...f 00 = -100
 // answer is neg, has length of longest with a possible carry
-fn bitand_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitand_neg_neg<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_b = 1;
     let mut carry_and = 1;
@@ -103,18 +102,18 @@ fn bitand_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
     }
 }
 
-forward_val_val_binop!(impl BitAnd for BigInt, bitand);
-forward_ref_val_binop!(impl BitAnd for BigInt, bitand);
+forward_val_val_binop!(impl BitAnd for BigInt<N>, bitand);
+forward_ref_val_binop!(impl BitAnd for BigInt<N>, bitand);
 
 // do not use forward_ref_ref_binop_commutative! for bitand so that we can
 // clone as needed, avoiding over-allocation
-impl BitAnd<&BigInt> for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> BitAnd<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(self, other: &BigInt) -> BigInt {
+    fn bitand(self, other: &BigInt<N>) -> BigInt<N> {
         match (self.sign, other.sign) {
-            (NoSign, _) | (_, NoSign) => BigInt::ZERO,
+            (NoSign, _) | (_, NoSign) => BigInt::zero(),
             (Plus, Plus) => BigInt::from(&self.data & &other.data),
             (Plus, Minus) => self.clone() & other,
             (Minus, Plus) => other.clone() & self,
@@ -130,20 +129,25 @@ impl BitAnd<&BigInt> for &BigInt {
     }
 }
 
-impl BitAnd<&BigInt> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> BitAnd<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(mut self, other: &BigInt) -> BigInt {
+    fn bitand(mut self, other: &BigInt<N>) -> BigInt<N> {
         self &= other;
         self
     }
 }
 
-forward_val_assign!(impl BitAndAssign for BigInt, bitand_assign);
+impl<const N: usize> BitAndAssign<BigInt<N>> for BigInt<N> {
+    #[inline]
+    fn bitand_assign(&mut self, other: BigInt<N>) {
+        self.bitand_assign(&other);
+    }
+}
 
-impl BitAndAssign<&BigInt> for BigInt {
-    fn bitand_assign(&mut self, other: &BigInt) {
+impl<const N: usize> BitAndAssign<&BigInt<N>> for BigInt<N> {
+    fn bitand_assign(&mut self, other: &BigInt<N>) {
         match (self.sign, other.sign) {
             (NoSign, _) => {}
             (_, NoSign) => self.set_zero(),
@@ -173,7 +177,7 @@ impl BitAndAssign<&BigInt> for BigInt {
 // + 1 | -ff = ...0 01 | ...f 01 = ...f 01 = -ff
 // +ff | - 1 = ...0 ff | ...f ff = ...f ff = - 1
 // answer is neg, has length of b
-fn bitor_pos_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitor_pos_neg<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_b = 1;
     let mut carry_or = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -224,7 +228,7 @@ fn bitor_neg_pos(a: &mut [BigDigit], b: &[BigDigit]) {
 // - 1 | -ff = ...f ff | ...f 01 = ...f ff = -1
 // -ff | - 1 = ...f 01 | ...f ff = ...f ff = -1
 // answer is neg, has length of shortest
-fn bitor_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitor_neg_neg<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_b = 1;
     let mut carry_or = 1;
@@ -242,20 +246,20 @@ fn bitor_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
     debug_assert!(carry_or == 0);
 }
 
-forward_val_val_binop!(impl BitOr for BigInt, bitor);
-forward_ref_val_binop!(impl BitOr for BigInt, bitor);
+forward_val_val_binop!(impl BitOr for BigInt<N>, bitor);
+forward_ref_val_binop!(impl BitOr for BigInt<N>, bitor);
 
 // do not use forward_ref_ref_binop_commutative! for bitor so that we can
 // clone as needed, avoiding over-allocation
-impl BitOr<&BigInt> for &BigInt {
-    type Output = BigInt;
+impl<const N: usize> BitOr<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(self, other: &BigInt) -> BigInt {
+    fn bitor(self, other: &BigInt<N>) -> BigInt<N> {
         match (self.sign, other.sign) {
             (NoSign, _) => other.clone(),
             (_, NoSign) => self.clone(),
-            (Plus, Plus) => BigInt::from(&self.data | &other.data),
+            (Plus, Plus) => BigInt::<N>::from(&self.data | &other.data),
             (Plus, Minus) => other.clone() | self,
             (Minus, Plus) => self.clone() | other,
             (Minus, Minus) => {
@@ -270,20 +274,20 @@ impl BitOr<&BigInt> for &BigInt {
     }
 }
 
-impl BitOr<&BigInt> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> BitOr<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(mut self, other: &BigInt) -> BigInt {
+    fn bitor(mut self, other: &BigInt<N>) -> BigInt<N> {
         self |= other;
         self
     }
 }
 
-forward_val_assign!(impl BitOrAssign for BigInt, bitor_assign);
+forward_val_assign!(impl BitOrAssign for BigInt<N>, bitor_assign);
 
-impl BitOrAssign<&BigInt> for BigInt {
-    fn bitor_assign(&mut self, other: &BigInt) {
+impl<const N: usize> BitOrAssign<&BigInt<N>> for BigInt<N> {
+    fn bitor_assign(&mut self, other: &BigInt<N>) {
         match (self.sign, other.sign) {
             (_, NoSign) => {}
             (NoSign, _) => self.clone_from(other),
@@ -308,7 +312,7 @@ impl BitOrAssign<&BigInt> for BigInt {
 // + 1 ^ -ff = ...0 01 ^ ...f 01 = ...f 00 = -100
 // +ff ^ - 1 = ...0 ff ^ ...f ff = ...f 00 = -100
 // answer is neg, has length of longest with a possible carry
-fn bitxor_pos_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitxor_pos_neg<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_b = 1;
     let mut carry_xor = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -341,7 +345,7 @@ fn bitxor_pos_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
 // - 1 ^ +ff = ...f ff ^ ...0 ff = ...f 00 = -100
 // -ff ^ + 1 = ...f 01 ^ ...0 01 = ...f 00 = -100
 // answer is neg, has length of longest with a possible carry
-fn bitxor_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitxor_neg_pos<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_xor = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -374,7 +378,7 @@ fn bitxor_neg_pos(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
 // - 1 ^ -ff = ...f ff ^ ...f 01 = ...0 fe = +fe
 // -ff & - 1 = ...f 01 ^ ...f ff = ...0 fe = +fe
 // answer is pos, has length of longest
-fn bitxor_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
+fn bitxor_neg_neg<const N: usize>(a: &mut TinyVec<[BigDigit; N]>, b: &[BigDigit]) {
     let mut carry_a = 1;
     let mut carry_b = 1;
     for (ai, &bi) in a.iter_mut().zip(b.iter()) {
@@ -406,22 +410,22 @@ fn bitxor_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
     }
 }
 
-forward_all_binop_to_val_ref_commutative!(impl BitXor for BigInt, bitxor);
+forward_all_binop_to_val_ref_commutative!(impl BitXor for BigInt<N>, bitxor);
 
-impl BitXor<&BigInt> for BigInt {
-    type Output = BigInt;
+impl<const N: usize> BitXor<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
 
     #[inline]
-    fn bitxor(mut self, other: &BigInt) -> BigInt {
+    fn bitxor(mut self, other: &BigInt<N>) -> BigInt<N> {
         self ^= other;
         self
     }
 }
 
-forward_val_assign!(impl BitXorAssign for BigInt, bitxor_assign);
+forward_val_assign!(impl BitXorAssign for BigInt<N>, bitxor_assign);
 
-impl BitXorAssign<&BigInt> for BigInt {
-    fn bitxor_assign(&mut self, other: &BigInt) {
+impl<const N: usize> BitXorAssign<&BigInt<N>> for BigInt<N> {
+    fn bitxor_assign(&mut self, other: &BigInt<N>) {
         match (self.sign, other.sign) {
             (_, NoSign) => {}
             (NoSign, _) => self.clone_from(other),
@@ -449,7 +453,7 @@ impl BitXorAssign<&BigInt> for BigInt {
     }
 }
 
-pub(super) fn set_negative_bit(x: &mut BigInt, bit: u64, value: bool) {
+pub(super) fn set_negative_bit<const N: usize>(x: &mut BigInt<N>, bit: u64, value: bool) {
     debug_assert_eq!(x.sign, Minus);
     let data = &mut x.data;
 
